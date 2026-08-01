@@ -69,8 +69,7 @@
     <button id="dialogClose" class="dialog-close" aria-label="Kapat">×</button>
     <div class="dialog-layout dialog-layout-simple">
       <div class="viewer-column viewer-column-simple">
-        <model-viewer id="mainViewer" camera-controls auto-rotate shadow-intensity="1"
-          environment-image="neutral" ar ar-modes="webxr scene-viewer quick-look"
+        <model-viewer id="mainViewer" camera-controls auto-rotate environment-image="neutral" tone-mapping="neutral" exposure="1.2" shadow-intensity="0.25" ar ar-modes="webxr scene-viewer quick-look"
           touch-action="pan-y">
           <button class="ar-button" slot="ar-button">Gerçek ortamda görüntüle</button>
           <div class="progress-bar hide" slot="progress-bar"><div class="update-bar"></div></div>

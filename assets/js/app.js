@@ -1,6 +1,30 @@
 
 const state={catalog:null,department:"all",query:"",deferredPrompt:null};
 const $=s=>document.querySelector(s);
+
+const preparedViewers=new WeakSet();
+
+function preparePhotogrammetryViewer(viewer){
+  if(!viewer||preparedViewers.has(viewer)) return;
+  preparedViewers.add(viewer);
+
+  viewer.setAttribute("tone-mapping","neutral");
+  viewer.setAttribute("exposure","1.25");
+
+  viewer.addEventListener("load",()=>{
+    const materials=viewer.model?.materials||[];
+    for(const material of materials){
+      const pbr=material.pbrMetallicRoughness;
+      if(!pbr) continue;
+
+      // Scaniverse/fotogrametri dokuları zaten nesnenin gerçek rengini taşır.
+      // Metalik yansımayı kapatıp yüzeyi mat yapmak, kart ve iPhone Quick Look
+      // görünümündeki siyahlaşmayı önler.
+      pbr.setMetallicFactor(0);
+      pbr.setRoughnessFactor(1);
+    }
+  });
+}
 const departmentsEl=$("#departmentFilters"),gridEl=$("#modelGrid"),emptyEl=$("#emptyState");
 
 function platform(){
@@ -33,7 +57,9 @@ function filteredModels(){
 function card(m){
   return `<article class="model-card" data-id="${m.id}" tabindex="0">
     <div class="model-preview">
-      <model-viewer src="${m.glb}" alt="${m.title}" camera-orbit="45deg 70deg 2.6m" shadow-intensity=".7" loading="lazy" interaction-prompt="none"></model-viewer>
+      <model-viewer src="${m.glb}" alt="${m.title}" camera-orbit="45deg 70deg 2.6m"
+        tone-mapping="neutral" exposure="1.25" shadow-intensity="0"
+        loading="lazy" interaction-prompt="none"></model-viewer>
       <div class="card-platforms"><span>TEK GLB</span></div>
     </div>
     <div class="model-content">
@@ -59,6 +85,7 @@ function renderModels(){
   }
 
   gridEl.querySelectorAll(".model-card").forEach(c=>{
+    preparePhotogrammetryViewer(c.querySelector("model-viewer"));
     c.addEventListener("click",()=>openModel(c.dataset.id));
     c.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" ")openModel(c.dataset.id)});
   });
@@ -76,6 +103,7 @@ function closeViewer(){
   history.replaceState(null,"",location.pathname);
 }
 async function init(){
+  preparePhotogrammetryViewer($("#mainViewer"));
   const res=await fetch("data/catalog.json",{cache:"no-store"}); state.catalog=await res.json();
   $("#platformBadge").textContent=platformText();
   renderFilters();renderModels();

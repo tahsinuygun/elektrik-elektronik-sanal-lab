@@ -1,4 +1,4 @@
-const CACHE = 'eem-sanal-lab-footer-fix-v7';
+const CACHE = 'eem-sanal-lab-material-fix-v8';
 
 const SHELL = [
   './',
