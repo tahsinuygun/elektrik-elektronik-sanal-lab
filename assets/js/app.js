@@ -68,11 +68,6 @@ function openModel(id){
   const v=$("#mainViewer");
   v.src=m.glb;
   v.removeAttribute("ios-src");
-  $("#detailDepartment").textContent=departmentName(m.department);
-  $("#detailTitle").textContent=m.title;
-  $("#detailDescription").textContent=m.description;
-  $("#learningList").innerHTML=(m.learning||[]).map(x=>`<li>${x}</li>`).join("");
-  $("#tagList").innerHTML=(m.tags||[]).map(x=>`<span>${x}</span>`).join("");
   $("#viewerDialog").showModal();
   history.replaceState(null,"",`${location.pathname}?model=${encodeURIComponent(id)}${platform()==="desktop"?"":`&platform=${platform()}`}`);
 }
@@ -82,8 +77,6 @@ function closeViewer(){
 }
 async function init(){
   const res=await fetch("data/catalog.json",{cache:"no-store"}); state.catalog=await res.json();
-  $("#modelCount").textContent=state.catalog.models.length;
-  $("#departmentCount").textContent=state.catalog.departments.length;
   $("#platformBadge").textContent=platformText();
   renderFilters();renderModels();
   const id=new URLSearchParams(location.search).get("model"); if(id)setTimeout(()=>openModel(id),250);

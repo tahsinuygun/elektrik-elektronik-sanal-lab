@@ -26,39 +26,15 @@
   </header>
 
   <main>
-    <section class="hero">
-      <div class="hero-copy">
-        <span class="eyebrow">ETKİLEŞİMLİ 3B + ARTIRILMIŞ GERÇEKLİK</span>
-        <h1>Laboratuvar cihazlarını<br><span>her yerde inceleyin.</span></h1>
-        <p>Modelleri 360° döndürün, ayrıntıları yakınlaştırın ve desteklenen telefonlarda gerçek ortamınıza yerleştirin.</p>
-        <div class="hero-actions">
-          <a class="primary-button" href="#katalog">Modelleri keşfet</a>
-          <button class="secondary-button" id="howButton">Nasıl kullanılır?</button>
-        </div>
-        <div class="platform-row">
-          <span id="platformBadge" class="platform-badge">Cihaz algılanıyor…</span>
-          <span class="soft-note">iPhone • Android • Masaüstü</span>
-        </div>
+    <section class="quick-actions">
+      <div class="hero-actions">
+        <a class="primary-button" href="#katalog">Modelleri keşfet</a>
+        <button class="secondary-button" id="howButton">Nasıl kullanılır?</button>
       </div>
-      <div class="hero-visual glass-panel">
-        <div class="hero-grid"></div>
-        <div class="floating-chip chip-one">3B İnceleme</div>
-        <div class="floating-chip chip-two">AR Yerleştirme</div>
-        <div class="device-frame hero-brand-panel">
-          <img src="assets/images/logo.png" alt="MAKÜ MMF Elektrik-Elektronik Mühendisliği">
-          <div class="hero-feature-list">
-            <span><b>01</b> Anabilim dalını seçin</span>
-            <span><b>02</b> 3B modeli inceleyin</span>
-            <span><b>03</b> AR ortamına yerleştirin</span>
-          </div>
-        </div>
+      <div class="platform-row">
+        <span id="platformBadge" class="platform-badge">Cihaz algılanıyor…</span>
+        <span class="soft-note">iPhone • Android • Masaüstü</span>
       </div>
-    </section>
-
-    <section class="stats">
-      <article><strong id="modelCount">0</strong><span>3B model</span></article>
-      <article><strong id="departmentCount">0</strong><span>anabilim dalı</span></article>
-      <article><strong>2</strong><span>mobil platform</span></article>
     </section>
 
     <section id="katalog" class="catalog-section">
@@ -77,18 +53,6 @@
         <p id="emptyText">GLB dosyasını ilgili anabilim dalı klasörüne yüklemeniz yeterlidir; model otomatik olarak burada görünür.</p>
       </div>
     </section>
-
-    <section class="info-band">
-      <div>
-        <span class="eyebrow">MOBİL DENEYİM</span>
-        <h2>Tek bağlantı, iki platform</h2>
-        <p>Tek bir GLB dosyası Android, iPhone ve masaüstünde kullanılır. iPhone'da AR başlatıldığında gerekli Quick Look dosyası otomatik oluşturulur.</p>
-      </div>
-      <div class="mini-cards">
-        <article><b>Android</b><span>GLB + ARCore</span></article>
-        <article><b>iPhone</b><span>GLB → Quick Look</span></article>
-      </div>
-    </section>
   </main>
 
   <footer>
@@ -103,29 +67,23 @@
     <a href="qr-uretici.html">QR kod üretici</a>
   </footer>
 
-  <dialog id="viewerDialog" class="viewer-dialog">
+  <dialog id="viewerDialog" class="viewer-dialog viewer-dialog-simple">
     <button id="dialogClose" class="dialog-close" aria-label="Kapat">×</button>
-    <div class="dialog-layout">
-      <div class="viewer-column">
+    <div class="dialog-layout dialog-layout-simple">
+      <div class="viewer-column viewer-column-simple">
         <model-viewer id="mainViewer" camera-controls auto-rotate shadow-intensity="1"
           environment-image="neutral" ar ar-modes="webxr scene-viewer quick-look"
           touch-action="pan-y">
-          <button class="ar-button" slot="ar-button">⌁ Gerçek ortamda görüntüle</button>
+          <button class="ar-button" slot="ar-button">Gerçek ortamda görüntüle</button>
           <div class="progress-bar hide" slot="progress-bar"><div class="update-bar"></div></div>
         </model-viewer>
         <div class="viewer-toolbar">
           <button id="resetViewButton">Görünümü sıfırla</button>
           <button id="toggleRotateButton">Otomatik döndür: açık</button>
         </div>
-      </div>
-      <div class="detail-column">
-        <span id="detailDepartment" class="detail-department"></span>
-        <h2 id="detailTitle"></h2>
-        <p id="detailDescription"></p>
-        <h3>Öğrenme kazanımları</h3>
-        <ul id="learningList"></ul>
-        <div id="tagList" class="tag-list"></div>
-        <div class="usage-tip"><b>İpucu:</b> Tek parmakla döndürün, iki parmakla yakınlaştırın. AR modunda zemini yavaşça tarayın.</div>
+        <div class="simple-viewer-tip">
+          <b>İpucu:</b> Tek parmakla döndürün, iki parmakla yakınlaştırın. AR modunda zemini yavaşça tarayın.
+        </div>
       </div>
     </div>
   </dialog>

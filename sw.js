@@ -1,4 +1,4 @@
-const CACHE = 'eem-sanal-lab-otomatik-v4';
+const CACHE = 'eem-sanal-lab-sade-v5';
 
 const SHELL = [
   './',
