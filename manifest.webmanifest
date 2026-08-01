@@ -1,0 +1,24 @@
+{
+  "name": "Elektrik-Elektronik Mühendisliği Sanal Laboratuvarı",
+  "short_name": "Sanal Lab",
+  "description": "Etkileşimli 3B modeller ve artırılmış gerçeklik laboratuvarı.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#06101d",
+  "theme_color": "#07111f",
+  "icons": [
+    {
+      "src": "assets/images/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "assets/images/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

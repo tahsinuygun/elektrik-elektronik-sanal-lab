@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#07111f" />
+  <meta name="description" content="Elektrik-Elektronik Mühendisliği Sanal Laboratuvarı: etkileşimli 3B modeller ve artırılmış gerçeklik deneyleri." />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" href="assets/images/icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="assets/images/apple-touch-icon.png" />
+  <link rel="stylesheet" href="assets/css/styles.css" />
+  <title>Elektrik-Elektronik Mühendisliği Sanal Laboratuvarı</title>
+  <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
+</head>
+<body>
+  <div class="bg-orb orb-a"></div><div class="bg-orb orb-b"></div>
+  <header class="topbar">
+    <a class="brand" href="./" aria-label="Ana sayfa">
+      <span class="logo-shell"><img id="brandLogo" src="assets/images/logo.png" alt="MAKÜ MMF Elektrik-Elektronik Mühendisliği logosu"></span>
+      <span class="brand-copy"><strong>Sanal Laboratuvarı</strong><small>3B ve artırılmış gerçeklik</small></span>
+    </a>
+    <nav class="top-actions">
+      <button id="themeButton" class="icon-button" aria-label="Tema değiştir">◐</button>
+      <button id="installButton" class="ghost-button" hidden>Uygulamayı yükle</button>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="hero-copy">
+        <span class="eyebrow">ETKİLEŞİMLİ 3B + ARTIRILMIŞ GERÇEKLİK</span>
+        <h1>Laboratuvar cihazlarını<br><span>her yerde inceleyin.</span></h1>
+        <p>Modelleri 360° döndürün, ayrıntıları yakınlaştırın ve desteklenen telefonlarda gerçek ortamınıza yerleştirin.</p>
+        <div class="hero-actions">
+          <a class="primary-button" href="#katalog">Modelleri keşfet</a>
+          <button class="secondary-button" id="howButton">Nasıl kullanılır?</button>
+        </div>
+        <div class="platform-row">
+          <span id="platformBadge" class="platform-badge">Cihaz algılanıyor…</span>
+          <span class="soft-note">iPhone • Android • Masaüstü</span>
+        </div>
+      </div>
+      <div class="hero-visual glass-panel">
+        <div class="hero-grid"></div>
+        <div class="floating-chip chip-one">3B İnceleme</div>
+        <div class="floating-chip chip-two">AR Yerleştirme</div>
+        <div class="device-frame hero-brand-panel">
+          <img src="assets/images/logo.png" alt="MAKÜ MMF Elektrik-Elektronik Mühendisliği">
+          <div class="hero-feature-list">
+            <span><b>01</b> Anabilim dalını seçin</span>
+            <span><b>02</b> 3B modeli inceleyin</span>
+            <span><b>03</b> AR ortamına yerleştirin</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="stats">
+      <article><strong id="modelCount">0</strong><span>3B model</span></article>
+      <article><strong id="departmentCount">0</strong><span>anabilim dalı</span></article>
+      <article><strong>2</strong><span>mobil platform</span></article>
+    </section>
+
+    <section id="katalog" class="catalog-section">
+      <div class="section-heading">
+        <div><span class="eyebrow">SANAL KOLEKSİYON</span><h2>Anabilim dalını seçin</h2></div>
+        <label class="search-box">
+          <span>⌕</span>
+          <input id="searchInput" type="search" placeholder="Model, cihaz veya konu ara…" autocomplete="off">
+        </label>
+      </div>
+      <div id="departmentFilters" class="department-filters" role="tablist"></div>
+      <div id="modelGrid" class="model-grid"></div>
+      <div id="emptyState" class="empty-state" hidden>
+        <div>◇</div>
+        <h3 id="emptyTitle">Henüz model yüklenmedi</h3>
+        <p id="emptyText">GLB dosyasını ilgili anabilim dalı klasörüne yüklemeniz yeterlidir; model otomatik olarak burada görünür.</p>
+      </div>
+    </section>
+
+    <section class="info-band">
+      <div>
+        <span class="eyebrow">MOBİL DENEYİM</span>
+        <h2>Tek bağlantı, iki platform</h2>
+        <p>Tek bir GLB dosyası Android, iPhone ve masaüstünde kullanılır. iPhone'da AR başlatıldığında gerekli Quick Look dosyası otomatik oluşturulur.</p>
+      </div>
+      <div class="mini-cards">
+        <article><b>Android</b><span>GLB + ARCore</span></article>
+        <article><b>iPhone</b><span>GLB → Quick Look</span></article>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="footer-main">
+      <strong>Elektrik-Elektronik Mühendisliği Sanal Laboratuvarı</strong>
+      <span>MAKÜ MMF Elektrik-Elektronik Mühendisliği</span>
+      <small class="project-support">
+        Bu uygulama Prof. Dr. Asım Gökhan YETGİN ve Dr. Öğr. Üyesi Tahsin UYGUN tarafından
+        MAKÜ BAP 1148-MP-25 numaralı proje destekleriyle yapılmıştır.
+      </small>
+    </div>
+    <a href="qr-uretici.html">QR kod üretici</a>
+  </footer>
+
+  <dialog id="viewerDialog" class="viewer-dialog">
+    <button id="dialogClose" class="dialog-close" aria-label="Kapat">×</button>
+    <div class="dialog-layout">
+      <div class="viewer-column">
+        <model-viewer id="mainViewer" camera-controls auto-rotate shadow-intensity="1"
+          environment-image="neutral" ar ar-modes="webxr scene-viewer quick-look"
+          touch-action="pan-y">
+          <button class="ar-button" slot="ar-button">⌁ Gerçek ortamda görüntüle</button>
+          <div class="progress-bar hide" slot="progress-bar"><div class="update-bar"></div></div>
+        </model-viewer>
+        <div class="viewer-toolbar">
+          <button id="resetViewButton">Görünümü sıfırla</button>
+          <button id="toggleRotateButton">Otomatik döndür: açık</button>
+        </div>
+      </div>
+      <div class="detail-column">
+        <span id="detailDepartment" class="detail-department"></span>
+        <h2 id="detailTitle"></h2>
+        <p id="detailDescription"></p>
+        <h3>Öğrenme kazanımları</h3>
+        <ul id="learningList"></ul>
+        <div id="tagList" class="tag-list"></div>
+        <div class="usage-tip"><b>İpucu:</b> Tek parmakla döndürün, iki parmakla yakınlaştırın. AR modunda zemini yavaşça tarayın.</div>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog id="howDialog" class="how-dialog">
+    <button id="howClose" class="dialog-close" aria-label="Kapat">×</button>
+    <span class="eyebrow">KULLANIM</span>
+    <h2>Üç adımda sanal laboratuvar</h2>
+    <ol>
+      <li><b>Anabilim dalını seçin.</b><span>İlgili cihaz ve deney modellerini filtreleyin.</span></li>
+      <li><b>3B modeli açın.</b><span>Döndürün, yakınlaştırın ve ayrıntıları inceleyin.</span></li>
+      <li><b>AR düğmesine dokunun.</b><span>Modeli gerçek ortamınızda uygun ölçekte konumlandırın.</span></li>
+    </ol>
+  </dialog>
+
+  <script src="assets/js/app.js" defer></script>
+</body>
+</html>

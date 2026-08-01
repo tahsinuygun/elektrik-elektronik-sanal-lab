@@ -1,0 +1,47 @@
+{
+  "departments": [
+    {
+      "id": "elektrik-tesisleri",
+      "name": "Elektrik Tesisleri",
+      "icon": "⚡",
+      "description": "Elektrik tesisatı, koruma, dağıtım ve ölçüm elemanları."
+    },
+    {
+      "id": "elektrik-makinalari",
+      "name": "Elektrik Makinaları",
+      "icon": "◉",
+      "description": "Motor, generatör, transformatör ve sürücü sistemleri."
+    },
+    {
+      "id": "elektronik",
+      "name": "Elektronik",
+      "icon": "⌁",
+      "description": "Elektronik bileşenler, kartlar ve yarı iletken uygulamaları."
+    },
+    {
+      "id": "elektromanyetik",
+      "name": "Elektromanyetik Alanlar ve Mikrodalga Tekniği",
+      "icon": "◌",
+      "description": "Anten, dalga kılavuzu ve elektromanyetik alan uygulamaları."
+    },
+    {
+      "id": "kontrol-kumanda",
+      "name": "Kontrol ve Kumanda Sistemleri",
+      "icon": "⌘",
+      "description": "Otomasyon, kontrol, robotik ve kumanda elemanları."
+    },
+    {
+      "id": "devreler-sistemler",
+      "name": "Devreler ve Sistemler",
+      "icon": "⌇",
+      "description": "Devre analizi, ölçüm sistemleri ve laboratuvar cihazları."
+    },
+    {
+      "id": "telekomunikasyon",
+      "name": "Telekomünikasyon",
+      "icon": "⌁",
+      "description": "Haberleşme, ağ, RF ve veri iletim sistemleri."
+    }
+  ],
+  "models": []
+}

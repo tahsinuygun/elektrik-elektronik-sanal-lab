@@ -1,0 +1,14 @@
+<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>QR Kod Üretici</title><link rel="stylesheet" href="assets/css/styles.css">
+<style>.qr-wrap{max-width:900px;margin:8vh auto;padding:28px}.qr-panel{padding:28px;border:1px solid var(--line);border-radius:24px;background:var(--panel)}.qr-panel input{width:100%;padding:14px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--text);margin:12px 0}.qr-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}.qr-card{padding:18px;border:1px solid var(--line);border-radius:18px;text-align:center}.qr-card img{width:min(260px,100%);background:white;padding:12px;border-radius:12px}.qr-card a{display:inline-block;margin-top:12px;color:var(--accent)}@media(max-width:650px){.qr-grid{grid-template-columns:1fr}}</style></head>
+<body><main class="qr-wrap"><a href="./">← Sanal laboratuvara dön</a><div class="qr-panel"><span class="eyebrow">YÖNETİCİ ARACI</span><h1>iPhone ve Android QR kodları</h1><p class="soft-note">GitHub Pages üzerinde yayınlandıktan sonra gerçek site adresini aşağıya yapıştırın.</p><input id="url" value="https://KULLANICI_ADI.github.io/elektrik-elektronik-sanal-lab/" aria-label="Site adresi"><button class="primary-button" id="create">QR kodları oluştur</button><div class="qr-grid" style="margin-top:24px"><div class="qr-card"><h2>iPhone</h2><img id="ios" alt="iPhone QR"><br><a id="iosDownload" download="iphone-qr.png">PNG'yi indir</a></div><div class="qr-card"><h2>Android</h2><img id="android" alt="Android QR"><br><a id="androidDownload" download="android-qr.png">PNG'yi indir</a></div></div></div></main>
+<script>
+function make(){
+ const base=document.querySelector('#url').value.trim().replace(/\/$/,'');
+ const ios=base+'/?platform=ios', android=base+'/?platform=android';
+ const api=u=>'https://api.qrserver.com/v1/create-qr-code/?size=700x700&margin=20&data='+encodeURIComponent(u);
+ document.querySelector('#ios').src=api(ios); document.querySelector('#android').src=api(android);
+ document.querySelector('#iosDownload').href=api(ios);document.querySelector('#androidDownload').href=api(android);
+}
+document.querySelector('#create').onclick=make;make();
+</script></body></html>
