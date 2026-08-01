@@ -87,7 +87,20 @@ def main() -> None:
             used_ids.add(model_id)
 
             relative = glb_path.relative_to(ROOT).as_posix()
-            models.append({
+
+            # iPhone AR için aynı klasörde aynı ada sahip USDZ dosyasını otomatik bul.
+            usdz_path = next(
+                (
+                    candidate
+                    for candidate in glb_path.parent.iterdir()
+                    if candidate.is_file()
+                    and candidate.suffix.lower() == ".usdz"
+                    and candidate.stem.casefold() == glb_path.stem.casefold()
+                ),
+                None
+            )
+
+            model_entry = {
                 "id": model_id,
                 "title": title,
                 "department": department_id,
@@ -102,7 +115,13 @@ def main() -> None:
                     "Modeli artırılmış gerçeklik ortamına yerleştirme"
                 ],
                 "tags": [department_names[department_id], "3B Model", "AR"]
-            })
+            }
+
+            if usdz_path is not None:
+                usdz_relative = usdz_path.relative_to(ROOT).as_posix()
+                model_entry["usdz"] = f"{usdz_relative}?v={short_hash(usdz_path)}"
+
+            models.append(model_entry)
 
     models.sort(key=lambda item: (item["department"], item["title"].casefold()))
     catalog["models"] = models
@@ -110,7 +129,7 @@ def main() -> None:
         json.dumps(catalog, ensure_ascii=False, indent=2) + "\n",
         encoding="utf-8"
     )
-    print(f"{len(models)} GLB modeli otomatik olarak kataloğa eklendi.")
+    print(f"{len(models)} model otomatik olarak kataloğa eklendi. Aynı adlı USDZ dosyaları iPhone AR için eşleştirildi.")
 
 
 if __name__ == "__main__":

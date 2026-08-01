@@ -161,3 +161,15 @@ dialog::backdrop{background:rgba(1,8,15,.78);backdrop-filter:blur(10px)}
     font-size:.9rem;
   }
 }
+
+
+.ar-file-notice{
+  margin:14px 18px 0;
+  padding:13px 15px;
+  border:1px solid rgba(255,189,102,.28);
+  border-radius:14px;
+  background:rgba(255,189,102,.1);
+  color:var(--warm);
+  line-height:1.5;
+  font-size:.86rem;
+}

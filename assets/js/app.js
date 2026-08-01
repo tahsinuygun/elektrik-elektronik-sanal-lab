@@ -2,29 +2,6 @@
 const state={catalog:null,department:"all",query:"",deferredPrompt:null};
 const $=s=>document.querySelector(s);
 
-const preparedViewers=new WeakSet();
-
-function preparePhotogrammetryViewer(viewer){
-  if(!viewer||preparedViewers.has(viewer)) return;
-  preparedViewers.add(viewer);
-
-  viewer.setAttribute("tone-mapping","neutral");
-  viewer.setAttribute("exposure","1.25");
-
-  viewer.addEventListener("load",()=>{
-    const materials=viewer.model?.materials||[];
-    for(const material of materials){
-      const pbr=material.pbrMetallicRoughness;
-      if(!pbr) continue;
-
-      // Scaniverse/fotogrametri dokuları zaten nesnenin gerçek rengini taşır.
-      // Metalik yansımayı kapatıp yüzeyi mat yapmak, kart ve iPhone Quick Look
-      // görünümündeki siyahlaşmayı önler.
-      pbr.setMetallicFactor(0);
-      pbr.setRoughnessFactor(1);
-    }
-  });
-}
 const departmentsEl=$("#departmentFilters"),gridEl=$("#modelGrid"),emptyEl=$("#emptyState");
 
 function platform(){
@@ -35,7 +12,7 @@ function platform(){
 }
 function platformText(){
   const p=platform(), forced=new URLSearchParams(location.search).get("platform");
-  if(forced==="ios"||p==="ios") return "iPhone algılandı • GLB ile AR";
+  if(forced==="ios"||p==="ios") return "iPhone algılandı • USDZ ile AR";
   if(forced==="android"||p==="android") return "Android algılandı • GLB ile AR";
   return "Masaüstü 3B görüntüleme";
 }
@@ -60,7 +37,7 @@ function card(m){
       <model-viewer src="${m.glb}" alt="${m.title}" camera-orbit="45deg 70deg 2.6m"
         tone-mapping="neutral" exposure="1.25" shadow-intensity="0"
         loading="lazy" interaction-prompt="none"></model-viewer>
-      <div class="card-platforms"><span>TEK GLB</span></div>
+      <div class="card-platforms"><span>${m.usdz ? "GLB + USDZ" : "3B GLB"}</span></div>
     </div>
     <div class="model-content">
       <small>${departmentName(m.department)}</small><h3>${m.title}</h3><p>${m.description}</p>
@@ -85,7 +62,6 @@ function renderModels(){
   }
 
   gridEl.querySelectorAll(".model-card").forEach(c=>{
-    preparePhotogrammetryViewer(c.querySelector("model-viewer"));
     c.addEventListener("click",()=>openModel(c.dataset.id));
     c.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" ")openModel(c.dataset.id)});
   });
@@ -93,17 +69,34 @@ function renderModels(){
 function openModel(id){
   const m=state.catalog.models.find(x=>x.id===id); if(!m)return;
   const v=$("#mainViewer");
-  v.src=m.glb;
-  v.removeAttribute("ios-src");
+  const arButton=v.querySelector('[slot="ar-button"]');
+  const notice=$("#arNotice");
+
+  v.setAttribute("src",m.glb);
+
+  if(m.usdz){
+    v.setAttribute("ios-src",m.usdz);
+  }else{
+    v.removeAttribute("ios-src");
+  }
+
+  const missingIosFile=platform()==="ios"&&!m.usdz;
+  if(arButton) arButton.hidden=missingIosFile;
+  if(notice) notice.hidden=!missingIosFile;
+
   $("#viewerDialog").showModal();
   history.replaceState(null,"",`${location.pathname}?model=${encodeURIComponent(id)}${platform()==="desktop"?"":`&platform=${platform()}`}`);
 }
 function closeViewer(){
   $("#viewerDialog").close();
+  const v=$("#mainViewer");
+  setTimeout(()=>{
+    v.removeAttribute("src");
+    v.removeAttribute("ios-src");
+  },150);
   history.replaceState(null,"",location.pathname);
 }
 async function init(){
-  preparePhotogrammetryViewer($("#mainViewer"));
   const res=await fetch("data/catalog.json",{cache:"no-store"}); state.catalog=await res.json();
   $("#platformBadge").textContent=platformText();
   renderFilters();renderModels();
