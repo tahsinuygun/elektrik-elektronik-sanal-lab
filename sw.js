@@ -1,4 +1,4 @@
-const CACHE = 'eem-sanal-lab-sade-v5';
+const CACHE = 'eem-sanal-lab-qr-fix-v6';
 
 const SHELL = [
   './',

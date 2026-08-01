@@ -1,14 +1,103 @@
-<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>QR Kod Üretici</title><link rel="stylesheet" href="assets/css/styles.css">
-<style>.qr-wrap{max-width:900px;margin:8vh auto;padding:28px}.qr-panel{padding:28px;border:1px solid var(--line);border-radius:24px;background:var(--panel)}.qr-panel input{width:100%;padding:14px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--text);margin:12px 0}.qr-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}.qr-card{padding:18px;border:1px solid var(--line);border-radius:18px;text-align:center}.qr-card img{width:min(260px,100%);background:white;padding:12px;border-radius:12px}.qr-card a{display:inline-block;margin-top:12px;color:var(--accent)}@media(max-width:650px){.qr-grid{grid-template-columns:1fr}}</style></head>
-<body><main class="qr-wrap"><a href="./">← Sanal laboratuvara dön</a><div class="qr-panel"><span class="eyebrow">YÖNETİCİ ARACI</span><h1>iPhone ve Android QR kodları</h1><p class="soft-note">GitHub Pages üzerinde yayınlandıktan sonra gerçek site adresini aşağıya yapıştırın.</p><input id="url" value="https://KULLANICI_ADI.github.io/elektrik-elektronik-sanal-lab/" aria-label="Site adresi"><button class="primary-button" id="create">QR kodları oluştur</button><div class="qr-grid" style="margin-top:24px"><div class="qr-card"><h2>iPhone</h2><img id="ios" alt="iPhone QR"><br><a id="iosDownload" download="iphone-qr.png">PNG'yi indir</a></div><div class="qr-card"><h2>Android</h2><img id="android" alt="Android QR"><br><a id="androidDownload" download="android-qr.png">PNG'yi indir</a></div></div></div></main>
-<script>
-function make(){
- const base=document.querySelector('#url').value.trim().replace(/\/$/,'');
- const ios=base+'/?platform=ios', android=base+'/?platform=android';
- const api=u=>'https://api.qrserver.com/v1/create-qr-code/?size=700x700&margin=20&data='+encodeURIComponent(u);
- document.querySelector('#ios').src=api(ios); document.querySelector('#android').src=api(android);
- document.querySelector('#iosDownload').href=api(ios);document.querySelector('#androidDownload').href=api(android);
-}
-document.querySelector('#create').onclick=make;make();
-</script></body></html>
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#07111f">
+  <title>Sanal Laboratuvar QR Kodu</title>
+  <link rel="stylesheet" href="assets/css/styles.css">
+  <style>
+    .qr-wrap{max-width:720px;margin:5vh auto;padding:20px}
+    .qr-panel{padding:28px;border:1px solid var(--line);border-radius:24px;background:var(--panel);text-align:center}
+    .qr-panel h1{margin:10px 0 8px;font-size:clamp(2rem,7vw,3.4rem);letter-spacing:-.04em}
+    .qr-panel p{color:var(--muted);line-height:1.6}
+    .url-row{display:flex;gap:10px;margin:20px 0 24px}
+    .url-row input{min-width:0;flex:1;padding:14px;border-radius:13px;border:1px solid var(--line);background:var(--bg);color:var(--text)}
+    .qr-card{padding:20px;border:1px solid var(--line);border-radius:20px;background:rgba(255,255,255,.025)}
+    .qr-card img{display:block;width:min(330px,100%);height:auto;margin:0 auto;background:#fff;padding:14px;border-radius:18px}
+    .qr-actions{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin-top:20px}
+    .status{margin-top:14px;font-size:.86rem;color:var(--accent)}
+    .back-link{display:inline-block;margin-bottom:18px;color:var(--accent);font-weight:750}
+    @media(max-width:650px){
+      .qr-wrap{padding:14px}
+      .qr-panel{padding:22px 16px}
+      .url-row{flex-direction:column}
+      .url-row button{width:100%}
+    }
+  </style>
+</head>
+<body>
+  <main class="qr-wrap">
+    <a class="back-link" href="./">← Sanal laboratuvara dön</a>
+    <section class="qr-panel">
+      <span class="eyebrow">TEK QR • TÜM TELEFONLAR</span>
+      <h1>Sanal Laboratuvar QR Kodu</h1>
+      <p>Bu QR kod hem iPhone hem Android cihazlarda aynı arayüzü açar. Site adresi otomatik algılanır.</p>
+
+      <div class="url-row">
+        <input id="url" type="url" aria-label="Sanal laboratuvar adresi">
+        <button class="primary-button" id="create" type="button">QR'ı yenile</button>
+      </div>
+
+      <div class="qr-card">
+        <img id="qrImage" alt="Elektrik-Elektronik Mühendisliği Sanal Laboratuvarı QR kodu">
+        <div class="qr-actions">
+          <a class="primary-button" id="openSite" target="_blank" rel="noopener">Arayüzü aç</a>
+          <a class="secondary-button" id="downloadQr" target="_blank" rel="noopener">QR görselini aç</a>
+        </div>
+        <div id="status" class="status"></div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const input = document.querySelector('#url');
+    const qrImage = document.querySelector('#qrImage');
+    const openSite = document.querySelector('#openSite');
+    const downloadQr = document.querySelector('#downloadQr');
+    const status = document.querySelector('#status');
+
+    function detectedSiteUrl() {
+      if (location.protocol === 'http:' || location.protocol === 'https:') {
+        return new URL('./', location.href).href;
+      }
+      return 'https://tahsinuygun.github.io/elektrik-elektronik-sanal-lab/';
+    }
+
+    function normalizeUrl(value) {
+      const url = new URL(value.trim());
+      url.hash = '';
+      url.search = '';
+      if (!url.pathname.endsWith('/')) url.pathname += '/';
+      return url.href;
+    }
+
+    function makeQr() {
+      try {
+        const siteUrl = normalizeUrl(input.value);
+        input.value = siteUrl;
+
+        const qrUrl =
+          'https://api.qrserver.com/v1/create-qr-code/' +
+          '?size=900x900&margin=24&format=png&data=' +
+          encodeURIComponent(siteUrl);
+
+        qrImage.src = qrUrl;
+        openSite.href = siteUrl;
+        downloadQr.href = qrUrl;
+        status.textContent = 'QR bağlantısı: ' + siteUrl;
+      } catch (error) {
+        status.textContent = 'Geçerli bir internet adresi yazın.';
+        qrImage.removeAttribute('src');
+      }
+    }
+
+    input.value = detectedSiteUrl();
+    document.querySelector('#create').addEventListener('click', makeQr);
+    input.addEventListener('keydown', event => {
+      if (event.key === 'Enter') makeQr();
+    });
+    makeQr();
+  </script>
+</body>
+</html>
