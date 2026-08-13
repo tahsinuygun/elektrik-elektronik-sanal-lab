@@ -4,22 +4,25 @@ const state={
   query:"",
   deferredPrompt:null,
   activeModelId:null,
-  viewerBusy:false
+  viewerBusy:false,
+  iosPage:0
 };
 
+const IOS_PAGE_SIZE=3;
 const $=s=>document.querySelector(s);
 const departmentsEl=$("#departmentFilters"),gridEl=$("#modelGrid"),emptyEl=$("#emptyState");
 
 function platform(){
   const ua=navigator.userAgent||"";
-  if(/iPad|iPhone|iPod/.test(ua)) return "ios";
+  const ipadDesktop = navigator.platform==="MacIntel" && navigator.maxTouchPoints>1;
+  if(/iPad|iPhone|iPod/.test(ua)||ipadDesktop) return "ios";
   if(/Android/.test(ua)) return "android";
   return "desktop";
 }
 
 function platformText(){
   const p=platform(), forced=new URLSearchParams(location.search).get("platform");
-  if(forced==="ios"||p==="ios") return "iPhone algılandı • GLB ile Quick Look AR";
+  if(forced==="ios"||p==="ios") return "iPhone / iPad algılandı • Quick Look AR";
   if(forced==="android"||p==="android") return "Android algılandı • GLB ile AR";
   return "Masaüstü 3B görüntüleme";
 }
@@ -47,6 +50,7 @@ function renderFilters(){
   departmentsEl.querySelectorAll("button").forEach(b=>
     b.addEventListener("click",()=>{
       state.department=b.dataset.department;
+      state.iosPage=0;
       renderFilters();
       renderModels();
     })
@@ -62,13 +66,6 @@ function filteredModels(){
   });
 }
 
-/*
-  iOS kararlılık yaklaşımı:
-  Kartlarda canlı <model-viewer> YOKTUR. Her kart gerçek GLB modelinden
-  GitHub Actions sırasında otomatik üretilen WebP poster görselini gösterir.
-  Bu nedenle sayfa kaydırılırken WebGL/GPU belleğine model veya doku yüklenmez.
-  Canlı 3B model yalnızca kullanıcı karta dokunduğunda ana görüntüleyicide açılır.
-*/
 function card(m){
   const poster=m.poster || "assets/images/icon.svg";
   return `<article class="model-card" data-id="${m.id}" tabindex="0">
@@ -78,7 +75,7 @@ function card(m){
         alt="${escapeHtml(m.title)} 3B model önizlemesi"
         loading="lazy"
         decoding="async"
-        style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:transparent;"
+        fetchpriority="low"
         onerror="this.onerror=null;this.src='assets/images/icon.svg';this.style.objectFit='scale-down';this.style.padding='18%';">
       <div class="card-platforms"><span>${m.usdz ? "GLB + USDZ • AR" : "GLB • iOS/Android AR"}</span></div>
     </div>
@@ -94,12 +91,75 @@ function card(m){
   </article>`;
 }
 
-function renderModels(){
-  const list=filteredModels();
-  gridEl.innerHTML=list.map(card).join("");
-  emptyEl.hidden=list.length!==0;
+function ensurePager(){
+  let pager=document.getElementById("iosPager");
+  if(!pager){
+    pager=document.createElement("div");
+    pager.id="iosPager";
+    pager.className="ios-pager";
+    pager.innerHTML=`
+      <button type="button" id="iosPrev">‹ Önceki</button>
+      <span id="iosPageInfo">1 / 1</span>
+      <button type="button" id="iosNext">Sonraki ›</button>
+    `;
+    gridEl.insertAdjacentElement("afterend",pager);
 
-  if(list.length===0){
+    pager.querySelector("#iosPrev").addEventListener("click",()=>{
+      if(state.iosPage<=0) return;
+      state.iosPage--;
+      renderModels();
+      scrollGridIntoView();
+    });
+
+    pager.querySelector("#iosNext").addEventListener("click",()=>{
+      const total=filteredModels().length;
+      const pages=Math.max(1,Math.ceil(total/IOS_PAGE_SIZE));
+      if(state.iosPage>=pages-1) return;
+      state.iosPage++;
+      renderModels();
+      scrollGridIntoView();
+    });
+  }
+  return pager;
+}
+
+function scrollGridIntoView(){
+  const y=gridEl.getBoundingClientRect().top+window.scrollY-90;
+  window.scrollTo({top:Math.max(0,y),behavior:"smooth"});
+}
+
+function updatePager(total){
+  const pager=ensurePager();
+  if(platform()!=="ios"){
+    pager.style.display="none";
+    return;
+  }
+
+  pager.style.display="flex";
+  const pages=Math.max(1,Math.ceil(total/IOS_PAGE_SIZE));
+  state.iosPage=Math.min(state.iosPage,pages-1);
+
+  pager.querySelector("#iosPageInfo").textContent=`${state.iosPage+1} / ${pages}`;
+  pager.querySelector("#iosPrev").disabled=state.iosPage===0;
+  pager.querySelector("#iosNext").disabled=state.iosPage>=pages-1;
+}
+
+function renderModels(){
+  const all=filteredModels();
+  let list=all;
+
+  // iOS'ta DOM'da en fazla 3 büyük kart tutuyoruz.
+  if(platform()==="ios"){
+    const pages=Math.max(1,Math.ceil(all.length/IOS_PAGE_SIZE));
+    if(state.iosPage>=pages) state.iosPage=pages-1;
+    const start=state.iosPage*IOS_PAGE_SIZE;
+    list=all.slice(start,start+IOS_PAGE_SIZE);
+  }
+
+  gridEl.innerHTML=list.map(card).join("");
+  emptyEl.hidden=all.length!==0;
+
+  if(all.length===0){
     const hasQuery=Boolean(state.query.trim());
     const selected=state.department==="all" ? "" : departmentName(state.department);
 
@@ -109,7 +169,7 @@ function renderModels(){
 
     $("#emptyText").textContent=hasQuery
       ? "Arama kelimesini veya anabilim dalı seçimini değiştirin."
-      : "GLB dosyasını ilgili anabilim dalı klasörüne yüklediğinizde GitHub işlemi tamamlanır ve model otomatik olarak burada görünür.";
+      : "GLB dosyasını ilgili anabilim dalı klasörüne yüklediğinizde model otomatik olarak burada görünür.";
   }
 
   gridEl.querySelectorAll(".model-card").forEach(c=>{
@@ -121,6 +181,8 @@ function renderModels(){
       }
     });
   });
+
+  updatePager(all.length);
 }
 
 function releaseViewer(){
@@ -221,6 +283,7 @@ async function init(){
 
 $("#searchInput").addEventListener("input",e=>{
   state.query=e.target.value;
+  state.iosPage=0;
   renderModels();
 });
 
@@ -273,7 +336,7 @@ $("#installButton").addEventListener("click",async()=>{
 
 if("serviceWorker" in navigator){
   window.addEventListener("load",()=>{
-    navigator.serviceWorker.register("sw.js?v=13").then(reg=>reg.update()).catch(console.error);
+    navigator.serviceWorker.register("sw.js?v=14").then(reg=>reg.update()).catch(console.error);
   });
 }
 
