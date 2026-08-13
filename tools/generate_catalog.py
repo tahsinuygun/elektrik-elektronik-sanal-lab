@@ -109,7 +109,7 @@ def main() -> None:
                 "glb": f"{relative}?v={content_hash}",
                 # Poster dosyası GitHub Actions sırasında gerçek GLB'den otomatik üretilir.
                 # Sürüm değeri GLB içeriğine bağlıdır; model değişince poster URL'si de değişir.
-                "poster": f"assets/previews/{model_id}.webp?v={content_hash}",
+                "poster": f"assets/previews/{model_id}.png?v={content_hash}",
                 "description": (
                     f"{title} modelinin üç boyutlu ve artırılmış gerçeklik "
                     "ortamında incelenmesi."
