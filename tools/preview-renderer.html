@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <script type="module" src="https://unpkg.com/@google/model-viewer@4.3.1/dist/model-viewer.min.js"></script>
+  <style>
+    html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#0d2236}
+    model-viewer{width:640px;height:420px;background:#0d2236}
+  </style>
+</head>
+<body>
+  <model-viewer id="mv"
+    environment-image="neutral"
+    tone-mapping="neutral"
+    exposure="1.15"
+    shadow-intensity="0"
+    interaction-prompt="none"
+    camera-orbit="45deg 70deg auto"
+    field-of-view="30deg">
+  </model-viewer>
+  <script>
+    window.__previewReady=false;
+    window.__previewError=null;
+
+    customElements.whenDefined('model-viewer').then(()=>{
+      const params=new URLSearchParams(location.search);
+      const src=params.get('src');
+      const mv=document.getElementById('mv');
+
+      if(!src){
+        window.__previewError='src parametresi yok';
+        return;
+      }
+
+      mv.addEventListener('load',()=>{
+        requestAnimationFrame(()=>{
+          setTimeout(()=>{ window.__previewReady=true; },700);
+        });
+      },{once:true});
+
+      mv.addEventListener('error',(e)=>{
+        window.__previewError='model-viewer load error';
+      },{once:true});
+
+      mv.src=src;
+    });
+  </script>
+</body>
+</html>
