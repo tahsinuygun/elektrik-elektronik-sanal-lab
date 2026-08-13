@@ -1,6 +1,6 @@
-const CACHE = 'eem-sanal-lab-clean-v20';
+const CACHE = 'eem-sanal-lab-clean-v21';
 
-self.addEventListener('install', event => {
+self.addEventListener('install', () => {
   self.skipWaiting();
 });
 
@@ -16,20 +16,17 @@ self.addEventListener('fetch', event => {
   if (event.request.method !== 'GET') return;
 
   const url = new URL(event.request.url);
-
-  // Harici CDN kaynaklarına dokunma.
   if (url.origin !== self.location.origin) return;
 
   const path = url.pathname.toLowerCase();
   const isModel = path.endsWith('.glb') || path.endsWith('.usdz');
 
-  // Büyük 3B modelleri Service Worker cache'ine alma.
+  // 3B dosyaları SW cache'ine alınmaz; normal browser cache kullanılabilir.
   if (isModel) {
     event.respondWith(fetch(event.request));
     return;
   }
 
-  // HTML / JS / CSS / catalog daima ağdan güncel gelsin.
   const isFreshCode =
     event.request.mode === 'navigate' ||
     path.endsWith('.html') ||
@@ -39,12 +36,11 @@ self.addEventListener('fetch', event => {
 
   if (isFreshCode) {
     event.respondWith(
-      fetch(event.request, {cache: 'no-store'})
+      fetch(event.request, {cache:'no-store'})
         .catch(() => caches.match(event.request))
     );
     return;
   }
 
-  // Küçük statik dosyalar normal ağ isteğiyle gelsin.
   event.respondWith(fetch(event.request));
 });
