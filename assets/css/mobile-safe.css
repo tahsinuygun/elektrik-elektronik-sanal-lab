@@ -1,11 +1,9 @@
 
 /*
-  Mobil kararlılık katmanı (iOS + Android)
-  ---------------------------------------
-  - Ana sayfada gerçek model posterleri görünür.
-  - Mobilde aynı anda yalnızca 3 model kartı DOM'da tutulur.
-  - Kartlarda canlı WebGL/model-viewer yoktur.
-  - iOS'ta Safari compositor yükünü azaltan ek önlemler uygulanır.
+  v16 Mobil kararlılık katmanı
+  - iOS ve Android: 3 model / sayfa
+  - Kartlarda poster/placeholder yok; doğrudan canlı GLB önizlemesi var.
+  - iOS'ta pahalı blur/compositor efektleri kapalı tutulur.
 */
 
 html.mobile-device .model-grid {
@@ -28,15 +26,11 @@ html.mobile-device .model-preview {
   position: relative !important;
 }
 
-html.mobile-device .model-preview > img {
+html.mobile-device .model-preview model-viewer {
   width: 100% !important;
   height: 100% !important;
-  max-width: 100% !important;
-  max-height: 100% !important;
-  object-fit: contain !important;
-  padding: 8px !important;
-  box-sizing: border-box !important;
   display: block !important;
+  background: transparent !important;
 }
 
 html.mobile-device .mobile-pager {
@@ -75,7 +69,7 @@ html.mobile-device .mobile-pager {
   text-align: center;
 }
 
-/* iOS'a özel ek kararlılık önlemleri */
+/* iOS Safari için ek güvenlik */
 html.ios-device,
 html.ios-device body {
   background: #07131f !important;
@@ -119,14 +113,12 @@ html.ios-device .viewer-panel {
 
 html.ios-device .model-card {
   contain: layout paint style !important;
-  content-visibility: auto;
-  contain-intrinsic-size: 680px;
   background: #0b2034 !important;
   border-color: rgba(121, 170, 205, 0.24) !important;
 }
 
 html.ios-device .model-preview {
-  contain: strict !important;
+  contain: layout paint !important;
 }
 
 @media (max-width: 640px) {
