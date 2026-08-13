@@ -5,10 +5,10 @@ const state={
   deferredPrompt:null,
   activeModelId:null,
   viewerBusy:false,
-  iosPage:0
+  mobilePage:0
 };
 
-const IOS_PAGE_SIZE=3;
+const MOBILE_PAGE_SIZE=3;
 const $=s=>document.querySelector(s);
 const departmentsEl=$("#departmentFilters"),gridEl=$("#modelGrid"),emptyEl=$("#emptyState");
 
@@ -16,8 +16,13 @@ function platform(){
   const ua=navigator.userAgent||"";
   const ipadDesktop = navigator.platform==="MacIntel" && navigator.maxTouchPoints>1;
   if(/iPad|iPhone|iPod/.test(ua)||ipadDesktop) return "ios";
-  if(/Android/.test(ua)) return "android";
+  if(/Android/i.test(ua)) return "android";
   return "desktop";
+}
+
+function isMobile(){
+  const p=platform();
+  return p==="ios" || p==="android";
 }
 
 function platformText(){
@@ -50,7 +55,7 @@ function renderFilters(){
   departmentsEl.querySelectorAll("button").forEach(b=>
     b.addEventListener("click",()=>{
       state.department=b.dataset.department;
-      state.iosPage=0;
+      state.mobilePage=0;
       renderFilters();
       renderModels();
     })
@@ -66,16 +71,23 @@ function filteredModels(){
   });
 }
 
+/*
+  Kartta görülen resim, gerçek GLB modelinden GitHub Actions/Blender ile
+  otomatik üretilmiş statik posterdir. Kullanıcı karta girmeden modeli görür.
+  Canlı 3B model yalnızca karta tıklanınca açılır.
+*/
 function card(m){
   const poster=m.poster || "assets/images/icon.svg";
+  const loadMode=isMobile() ? "eager" : "lazy";
+
   return `<article class="model-card" data-id="${m.id}" tabindex="0">
     <div class="model-preview">
       <img
         src="${poster}"
         alt="${escapeHtml(m.title)} 3B model önizlemesi"
-        loading="lazy"
+        loading="${loadMode}"
         decoding="async"
-        fetchpriority="low"
+        ${isMobile() ? 'fetchpriority="high"' : 'fetchpriority="low"'}
         onerror="this.onerror=null;this.src='assets/images/icon.svg';this.style.objectFit='scale-down';this.style.padding='18%';">
       <div class="card-platforms"><span>${m.usdz ? "GLB + USDZ • AR" : "GLB • iOS/Android AR"}</span></div>
     </div>
@@ -92,34 +104,37 @@ function card(m){
 }
 
 function ensurePager(){
-  let pager=document.getElementById("iosPager");
+  let pager=document.getElementById("mobilePager");
+
   if(!pager){
     pager=document.createElement("div");
-    pager.id="iosPager";
-    pager.className="ios-pager";
+    pager.id="mobilePager";
+    pager.className="mobile-pager";
     pager.innerHTML=`
-      <button type="button" id="iosPrev">‹ Önceki</button>
-      <span id="iosPageInfo">1 / 1</span>
-      <button type="button" id="iosNext">Sonraki ›</button>
+      <button type="button" id="mobilePrev">‹ Önceki</button>
+      <span id="mobilePageInfo">1 / 1</span>
+      <button type="button" id="mobileNext">Sonraki ›</button>
     `;
+
     gridEl.insertAdjacentElement("afterend",pager);
 
-    pager.querySelector("#iosPrev").addEventListener("click",()=>{
-      if(state.iosPage<=0) return;
-      state.iosPage--;
+    pager.querySelector("#mobilePrev").addEventListener("click",()=>{
+      if(state.mobilePage<=0) return;
+      state.mobilePage--;
       renderModels();
       scrollGridIntoView();
     });
 
-    pager.querySelector("#iosNext").addEventListener("click",()=>{
+    pager.querySelector("#mobileNext").addEventListener("click",()=>{
       const total=filteredModels().length;
-      const pages=Math.max(1,Math.ceil(total/IOS_PAGE_SIZE));
-      if(state.iosPage>=pages-1) return;
-      state.iosPage++;
+      const pages=Math.max(1,Math.ceil(total/MOBILE_PAGE_SIZE));
+      if(state.mobilePage>=pages-1) return;
+      state.mobilePage++;
       renderModels();
       scrollGridIntoView();
     });
   }
+
   return pager;
 }
 
@@ -130,30 +145,33 @@ function scrollGridIntoView(){
 
 function updatePager(total){
   const pager=ensurePager();
-  if(platform()!=="ios"){
+
+  if(!isMobile()){
     pager.style.display="none";
     return;
   }
 
   pager.style.display="flex";
-  const pages=Math.max(1,Math.ceil(total/IOS_PAGE_SIZE));
-  state.iosPage=Math.min(state.iosPage,pages-1);
 
-  pager.querySelector("#iosPageInfo").textContent=`${state.iosPage+1} / ${pages}`;
-  pager.querySelector("#iosPrev").disabled=state.iosPage===0;
-  pager.querySelector("#iosNext").disabled=state.iosPage>=pages-1;
+  const pages=Math.max(1,Math.ceil(total/MOBILE_PAGE_SIZE));
+  state.mobilePage=Math.min(state.mobilePage,pages-1);
+
+  pager.querySelector("#mobilePageInfo").textContent=`${state.mobilePage+1} / ${pages}`;
+  pager.querySelector("#mobilePrev").disabled=state.mobilePage===0;
+  pager.querySelector("#mobileNext").disabled=state.mobilePage>=pages-1;
 }
 
 function renderModels(){
   const all=filteredModels();
   let list=all;
 
-  // iOS'ta DOM'da en fazla 3 büyük kart tutuyoruz.
-  if(platform()==="ios"){
-    const pages=Math.max(1,Math.ceil(all.length/IOS_PAGE_SIZE));
-    if(state.iosPage>=pages) state.iosPage=pages-1;
-    const start=state.iosPage*IOS_PAGE_SIZE;
-    list=all.slice(start,start+IOS_PAGE_SIZE);
+  // Hem iOS hem Android: ana sayfada 3 gerçek model posteri + Önceki/Sonraki.
+  if(isMobile()){
+    const pages=Math.max(1,Math.ceil(all.length/MOBILE_PAGE_SIZE));
+    if(state.mobilePage>=pages) state.mobilePage=pages-1;
+
+    const start=state.mobilePage*MOBILE_PAGE_SIZE;
+    list=all.slice(start,start+MOBILE_PAGE_SIZE);
   }
 
   gridEl.innerHTML=list.map(card).join("");
@@ -263,6 +281,7 @@ function openModel(id){
 function closeViewer(){
   const dialog=$("#viewerDialog");
   if(dialog.open) dialog.close();
+
   setTimeout(releaseViewer,80);
   history.replaceState(null,"",location.pathname);
 }
@@ -283,14 +302,16 @@ async function init(){
 
 $("#searchInput").addEventListener("input",e=>{
   state.query=e.target.value;
-  state.iosPage=0;
+  state.mobilePage=0;
   renderModels();
 });
 
 $("#dialogClose").addEventListener("click",closeViewer);
+
 $("#viewerDialog").addEventListener("click",e=>{
   if(e.target===$("#viewerDialog")) closeViewer();
 });
+
 $("#viewerDialog").addEventListener("close",()=>{
   if(state.activeModelId) setTimeout(releaseViewer,80);
 });
@@ -336,7 +357,9 @@ $("#installButton").addEventListener("click",async()=>{
 
 if("serviceWorker" in navigator){
   window.addEventListener("load",()=>{
-    navigator.serviceWorker.register("sw.js?v=14").then(reg=>reg.update()).catch(console.error);
+    navigator.serviceWorker.register("sw.js?v=15")
+      .then(reg=>reg.update())
+      .catch(console.error);
   });
 }
 
