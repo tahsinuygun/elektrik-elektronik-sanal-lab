@@ -5,10 +5,8 @@ const state={
   deferredPrompt:null,
   activeModelId:null,
   viewerBusy:false,
-  thumbBusy:false,
-  thumbQueue:[],
-  thumbDone:new Set(),
-  thumbObjectUrls:new Map()
+  previewObserver:null,
+  activePreviewIds:new Set()
 };
 
 const $=s=>document.querySelector(s);
@@ -19,6 +17,11 @@ function platform(){
   if(/iPad|iPhone|iPod/.test(ua)) return "ios";
   if(/Android/.test(ua)) return "android";
   return "desktop";
+}
+
+function isMobile(){
+  const p=platform();
+  return p==="ios" || p==="android";
 }
 
 function platformText(){
@@ -34,6 +37,12 @@ function departmentName(id){
 
 function normalize(t){
   return (t||"").toLocaleLowerCase("tr-TR");
+}
+
+function escapeHtml(v){
+  return String(v||"").replace(/[&<>"']/g,c=>({
+    "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
+  })[c]);
 }
 
 function renderFilters(){
@@ -61,22 +70,28 @@ function filteredModels(){
 }
 
 /*
-  Kartlarda sürekli çalışan 3B sahne yoktur.
-  Önizleme gerektiğinde TEK bir gizli model-viewer, ilgili GLB'yi sırayla yükler,
-  statik PNG görüntüsü üretir ve GLB kaynağını hemen bırakır.
-  Böylece kullanıcı kartta gerçek model görünümünü görür; fakat sayfa kaydırılırken
-  aynı anda çok sayıda WebGL sahnesi ve ağır doku GPU belleğinde tutulmaz.
+  Kartların içinde model-viewer görünür durumda kalır, fakat src başlangıçta verilmez.
+  GLB yalnızca kart ekranda gerçekten görünür olduğunda yüklenir.
+  iOS/Android'de aynı anda yalnızca 1 kart önizlemesi tutulur.
+  Kart ekrandan çıkınca src kaldırılır ve GPU/WebGL belleği serbest bırakılır.
 */
 function card(m){
   return `<article class="model-card" data-id="${m.id}" tabindex="0">
     <div class="model-preview">
-      <img class="model-thumb" data-thumb-id="${m.id}" alt="${escapeHtml(m.title)} önizlemesi"
-        style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:none;background:transparent;">
-      <div class="thumb-placeholder" data-placeholder-id="${m.id}"
-        style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;opacity:.82">
-        <img src="assets/images/icon.svg" alt="" aria-hidden="true" style="width:58px;height:58px;object-fit:contain;opacity:.75">
-        <span style="font-size:.78rem;font-weight:800;letter-spacing:.02em;opacity:.7">ÖNİZLEME HAZIRLANIYOR</span>
-      </div>
+      <model-viewer
+        class="card-viewer"
+        data-model-id="${m.id}"
+        alt="${escapeHtml(m.title)}"
+        camera-orbit="45deg 70deg 2.6m"
+        environment-image="neutral"
+        tone-mapping="neutral"
+        exposure="1.15"
+        shadow-intensity="0"
+        interaction-prompt="none"
+        loading="eager"
+        reveal="auto"
+        style="width:100%;height:100%;background:transparent;">
+      </model-viewer>
       <div class="card-platforms"><span>${m.usdz ? "GLB + USDZ • AR" : "GLB • iOS/Android AR"}</span></div>
     </div>
     <div class="model-content">
@@ -91,35 +106,80 @@ function card(m){
   </article>`;
 }
 
-function escapeHtml(v){
-  return String(v||"").replace(/[&<>"']/g,c=>({
-    "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
-  })[c]);
+function clearCardViewer(viewer){
+  if(!viewer) return;
+  try{
+    if(typeof viewer.pause==="function") viewer.pause();
+  }catch(_){}
+  viewer.removeAttribute("src");
+  const id=viewer.dataset.modelId;
+  if(id) state.activePreviewIds.delete(id);
 }
 
-let thumbObserver=null;
+function clearAllCardPreviews(){
+  gridEl.querySelectorAll(".card-viewer").forEach(clearCardViewer);
+  state.activePreviewIds.clear();
+}
 
-function setupThumbObserver(){
-  if(thumbObserver) thumbObserver.disconnect();
+function loadCardPreview(viewer){
+  if(!viewer || viewer.hasAttribute("src")) return;
+  const id=viewer.dataset.modelId;
+  const m=state.catalog.models.find(x=>x.id===id);
+  if(!m) return;
 
-  thumbObserver=new IntersectionObserver(entries=>{
-    for(const entry of entries){
-      if(!entry.isIntersecting) continue;
-      const card=entry.target;
-      const id=card.dataset.id;
-      if(!state.thumbDone.has(id)) enqueueThumb(id);
-      thumbObserver.unobserve(card);
+  // Telefonda sadece tek canlı kart önizlemesi tut.
+  if(isMobile()){
+    gridEl.querySelectorAll(".card-viewer").forEach(v=>{
+      if(v!==viewer) clearCardViewer(v);
+    });
+  }
+
+  viewer.setAttribute("src",m.glb);
+  state.activePreviewIds.add(id);
+}
+
+function setupPreviewObserver(){
+  if(state.previewObserver) state.previewObserver.disconnect();
+
+  state.previewObserver=new IntersectionObserver(entries=>{
+    // Mobilde ekranda en görünür kartı seç.
+    if(isMobile()){
+      const visible=entries
+        .filter(e=>e.isIntersecting && e.intersectionRatio>0.08)
+        .sort((a,b)=>b.intersectionRatio-a.intersectionRatio);
+
+      if(visible.length){
+        const viewer=visible[0].target.querySelector(".card-viewer");
+        loadCardPreview(viewer);
+      }
+
+      entries.filter(e=>!e.isIntersecting).forEach(e=>{
+        clearCardViewer(e.target.querySelector(".card-viewer"));
+      });
+      return;
     }
+
+    // Masaüstünde yalnızca ekranda olan kartlar yüklü kalır.
+    entries.forEach(entry=>{
+      const viewer=entry.target.querySelector(".card-viewer");
+      if(entry.isIntersecting && entry.intersectionRatio>0.05){
+        loadCardPreview(viewer);
+      }else{
+        clearCardViewer(viewer);
+      }
+    });
   },{
     root:null,
-    rootMargin:"350px 0px",
-    threshold:0.01
+    rootMargin:isMobile() ? "80px 0px" : "120px 0px",
+    threshold:[0,0.05,0.1,0.25,0.5,0.75]
   });
 
-  gridEl.querySelectorAll(".model-card").forEach(card=>thumbObserver.observe(card));
+  gridEl.querySelectorAll(".model-card").forEach(card=>state.previewObserver.observe(card));
 }
 
 function renderModels(){
+  clearAllCardPreviews();
+
   const list=filteredModels();
   gridEl.innerHTML=list.map(card).join("");
   emptyEl.hidden=list.length!==0;
@@ -147,164 +207,18 @@ function renderModels(){
     });
   });
 
-  // Daha önce bu oturumda üretilmiş önizlemeleri yeni filtre görünümüne geri uygula.
-  for(const [id,url] of state.thumbObjectUrls.entries()){
-    applyThumb(id,url);
-  }
-
-  setupThumbObserver();
+  setupPreviewObserver();
 }
-
-function ensureThumbRenderer(){
-  let r=document.getElementById("thumbRenderer");
-  if(r) return r;
-
-  r=document.createElement("model-viewer");
-  r.id="thumbRenderer";
-  r.setAttribute("environment-image","neutral");
-  r.setAttribute("tone-mapping","neutral");
-  r.setAttribute("exposure","1.15");
-  r.setAttribute("shadow-intensity","0.15");
-  r.setAttribute("interaction-prompt","none");
-  r.setAttribute("camera-orbit","35deg 70deg auto");
-  r.style.cssText=[
-    "position:fixed",
-    "left:-10000px",
-    "top:0",
-    "width:420px",
-    "height:300px",
-    "pointer-events:none",
-    "opacity:0.001",
-    "z-index:-1",
-    "background:transparent"
-  ].join(";");
-
-  document.body.appendChild(r);
-  return r;
-}
-
-function enqueueThumb(id){
-  if(state.thumbDone.has(id)) return;
-  if(state.thumbQueue.includes(id)) return;
-  state.thumbQueue.push(id);
-  processThumbQueue();
-}
-
-async function processThumbQueue(){
-  if(state.thumbBusy) return;
-  if(state.activeModelId || $("#viewerDialog").open) return;
-  const id=state.thumbQueue.shift();
-  if(!id) return;
-
-  const m=state.catalog.models.find(x=>x.id===id);
-  if(!m){
-    processThumbQueue();
-    return;
-  }
-
-  state.thumbBusy=true;
-  const r=ensureThumbRenderer();
-
-  try{
-    // Önce önceki kaynağı tamamen bırak.
-    try{ if(typeof r.pause==="function") r.pause(); }catch(_){}
-    r.removeAttribute("src");
-    r.removeAttribute("ios-src");
-
-    await wait(70);
-
-    const loaded=new Promise((resolve,reject)=>{
-      const timer=setTimeout(()=>reject(new Error("Önizleme zaman aşımı")),22000);
-
-      const ok=()=>{
-        clearTimeout(timer);
-        cleanup();
-        resolve();
-      };
-      const bad=()=>{
-        clearTimeout(timer);
-        cleanup();
-        reject(new Error("Önizleme modeli yüklenemedi"));
-      };
-      const cleanup=()=>{
-        r.removeEventListener("load",ok);
-        r.removeEventListener("error",bad);
-      };
-
-      r.addEventListener("load",ok,{once:true});
-      r.addEventListener("error",bad,{once:true});
-    });
-
-    r.setAttribute("src",m.glb);
-    await loaded;
-
-    // Dokuların son render karesine yerleşmesi için kısa süre bekle.
-    await wait(220);
-
-    if(typeof r.toBlob!=="function") throw new Error("toBlob desteklenmiyor");
-
-    const blob=await r.toBlob();
-
-    if(blob){
-      const old=state.thumbObjectUrls.get(id);
-      if(old) URL.revokeObjectURL(old);
-
-      const url=URL.createObjectURL(blob);
-      state.thumbObjectUrls.set(id,url);
-      state.thumbDone.add(id);
-      applyThumb(id,url);
-    }
-  }catch(err){
-    console.warn("Önizleme üretilemedi:",id,err);
-    const ph=document.querySelector(`[data-placeholder-id="${cssEscape(id)}"] span`);
-    if(ph) ph.textContent="3B MODELİ AÇ";
-  }finally{
-    try{ if(typeof r.pause==="function") r.pause(); }catch(_){}
-    r.removeAttribute("src");
-    r.removeAttribute("ios-src");
-    state.thumbBusy=false;
-
-    // iOS GPU/WebGL kaynağını bırakabilsin; sonraki modeli hemen yükleme.
-    setTimeout(processThumbQueue,350);
-  }
-}
-
-function applyThumb(id,url){
-  const img=document.querySelector(`[data-thumb-id="${cssEscape(id)}"]`);
-  const ph=document.querySelector(`[data-placeholder-id="${cssEscape(id)}"]`);
-  if(!img) return;
-
-  img.onload=()=>{
-    img.style.display="block";
-    if(ph) ph.style.display="none";
-  };
-  img.src=url;
-
-  if(img.complete){
-    img.style.display="block";
-    if(ph) ph.style.display="none";
-  }
-}
-
-function cssEscape(v){
-  if(window.CSS && typeof CSS.escape==="function") return CSS.escape(String(v));
-  return String(v).replace(/["\\]/g,"\\$&");
-}
-
-function wait(ms){ return new Promise(r=>setTimeout(r,ms)); }
 
 function releaseViewer(){
   const v=$("#mainViewer");
   if(!v) return;
-
   try{
     if(typeof v.pause==="function") v.pause();
   }catch(_){}
-
   v.autoRotate=false;
   v.removeAttribute("src");
   v.removeAttribute("ios-src");
-
   state.activeModelId=null;
   state.viewerBusy=false;
 }
@@ -313,15 +227,14 @@ function openModel(id){
   const m=state.catalog.models.find(x=>x.id===id);
   if(!m) return;
 
+  // Ana modeli açmadan önce kart önizlemelerinin tamamını boşalt.
+  clearAllCardPreviews();
+
   const v=$("#mainViewer");
   const arButton=v.querySelector('[slot="ar-button"]');
   const rotateButton=$("#toggleRotateButton");
 
-  // Önizleme üretimini durdur; aynı anda iki ağır 3B model yüklenmesin.
-  state.thumbQueue=state.thumbQueue.filter(x=>x!==id);
-
   releaseViewer();
-
   state.viewerBusy=true;
   state.activeModelId=id;
 
@@ -378,7 +291,7 @@ function closeViewer(){
 
   setTimeout(()=>{
     releaseViewer();
-    processThumbQueue();
+    setupPreviewObserver();
   },100);
 
   history.replaceState(null,"",location.pathname);
@@ -411,7 +324,7 @@ $("#viewerDialog").addEventListener("close",()=>{
   if(state.activeModelId){
     setTimeout(()=>{
       releaseViewer();
-      processThumbQueue();
+      setupPreviewObserver();
     },100);
   }
 });
@@ -457,18 +370,13 @@ $("#installButton").addEventListener("click",async()=>{
 
 if("serviceWorker" in navigator){
   window.addEventListener("load",()=>{
-    navigator.serviceWorker.register("sw.js?v=11").then(reg=>reg.update()).catch(console.error);
+    navigator.serviceWorker.register("sw.js?v=12").then(reg=>reg.update()).catch(console.error);
   });
 }
 
 window.addEventListener("pagehide",()=>{
+  clearAllCardPreviews();
   releaseViewer();
-  const r=document.getElementById("thumbRenderer");
-  if(r){
-    try{ if(typeof r.pause==="function") r.pause(); }catch(_){}
-    r.removeAttribute("src");
-  }
-  for(const url of state.thumbObjectUrls.values()) URL.revokeObjectURL(url);
 });
 
 init().catch(err=>{
