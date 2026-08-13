@@ -158,6 +158,7 @@ async function changeMobilePage(delta){
   if(next<0 || next>=pages) return;
 
   state.pageChanging=true;
+  updatePager(total);
 
   releaseCardViewers();
   gridEl.innerHTML="";
@@ -169,7 +170,11 @@ async function changeMobilePage(delta){
   await renderModels(false);
   scrollGridIntoView();
 
+  // KRİTİK DÜZELTME:
+  // v16'da renderModels() çalışırken pageChanging hâlâ true olduğu için
+  // Önceki ve Sonraki butonları disabled kalıyordu.
   state.pageChanging=false;
+  updatePager(total);
 }
 
 function scrollGridIntoView(){
@@ -191,8 +196,8 @@ function updatePager(total){
   state.mobilePage=Math.min(Math.max(0,state.mobilePage),pages-1);
 
   pager.querySelector("#mobilePageInfo").textContent=`${state.mobilePage+1} / ${pages}`;
-  pager.querySelector("#mobilePrev").disabled=state.mobilePage===0 || state.pageChanging;
-  pager.querySelector("#mobileNext").disabled=state.mobilePage>=pages-1 || state.pageChanging;
+  pager.querySelector("#mobilePrev").disabled=(state.mobilePage===0) || state.pageChanging;
+  pager.querySelector("#mobileNext").disabled=(state.mobilePage>=pages-1) || state.pageChanging;
 }
 
 async function renderModels(releaseFirst=false){
@@ -341,6 +346,7 @@ function wait(ms){
 }
 
 async function init(){
+  console.info("EEM Sanal Lab build v20", {platform: platform()});
   const res=await fetch("data/catalog.json",{cache:"no-store"});
   if(!res.ok) throw new Error(`catalog.json HTTP ${res.status}`);
 
@@ -416,7 +422,7 @@ $("#installButton").addEventListener("click",async()=>{
 
 if("serviceWorker" in navigator){
   window.addEventListener("load",()=>{
-    navigator.serviceWorker.register("sw.js?v=16")
+    navigator.serviceWorker.register("sw.js?v=20")
       .then(reg=>reg.update())
       .catch(console.error);
   });
