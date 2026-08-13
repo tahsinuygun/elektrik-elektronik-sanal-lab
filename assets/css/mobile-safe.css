@@ -1,0 +1,139 @@
+
+/*
+  v16 Mobil kararlılık katmanı
+  - iOS ve Android: 3 model / sayfa
+  - Kartlarda /placeholder yok; doğrudan canlı GLB önizlemesi var.
+  - iOS'ta pahalı blur/compositor efektleri kapalı tutulur.
+*/
+
+html.mobile-device .model-grid {
+  display: block !important;
+}
+
+html.mobile-device .model-card {
+  width: 100% !important;
+  max-width: 100% !important;
+  margin-bottom: 22px !important;
+  overflow: hidden !important;
+}
+
+html.mobile-device .model-preview {
+  height: 285px !important;
+  min-height: 285px !important;
+  max-height: 285px !important;
+  overflow: hidden !important;
+  background: #0c2238 !important;
+  position: relative !important;
+}
+
+html.mobile-device .model-preview model-viewer {
+  width: 100% !important;
+  height: 100% !important;
+  display: block !important;
+  background: transparent !important;
+}
+
+html.mobile-device .mobile-pager {
+  display: flex !important;
+}
+
+.mobile-pager {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin: 18px 0 34px;
+  padding: 0 10px;
+}
+
+.mobile-pager button {
+  appearance: none;
+  border: 1px solid rgba(92, 220, 198, .38);
+  background: #0c2438;
+  color: #edf8ff;
+  border-radius: 14px;
+  padding: 11px 15px;
+  font: inherit;
+  font-weight: 800;
+  min-width: 108px;
+}
+
+.mobile-pager button:disabled {
+  opacity: .38;
+}
+
+.mobile-pager span {
+  color: #9db1c4;
+  font-weight: 800;
+  min-width: 64px;
+  text-align: center;
+}
+
+/* iOS Safari için ek güvenlik */
+html.ios-device,
+html.ios-device body {
+  background: #07131f !important;
+  background-image: linear-gradient(180deg, #07131f 0%, #0b1c2c 100%) !important;
+  background-attachment: scroll !important;
+}
+
+html.ios-device body::before,
+html.ios-device body::after,
+html.ios-device main::before,
+html.ios-device main::after,
+html.ios-device .page-shell::before,
+html.ios-device .page-shell::after,
+html.ios-device .hero::before,
+html.ios-device .hero::after {
+  display: none !important;
+  content: none !important;
+}
+
+html.ios-device *,
+html.ios-device *::before,
+html.ios-device *::after {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  filter: none !important;
+  will-change: auto !important;
+}
+
+html.ios-device .model-card,
+html.ios-device .model-preview,
+html.ios-device .filter-button,
+html.ios-device .search-box,
+html.ios-device .search-wrap,
+html.ios-device .topbar,
+html.ios-device header,
+html.ios-device dialog,
+html.ios-device .viewer-panel {
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+html.ios-device .model-card {
+  contain: layout paint style !important;
+  background: #0b2034 !important;
+  border-color: rgba(121, 170, 205, 0.24) !important;
+}
+
+html.ios-device .model-preview {
+  contain: layout paint !important;
+}
+
+@media (max-width: 640px) {
+  html.mobile-device .model-preview {
+    height: 260px !important;
+    min-height: 260px !important;
+    max-height: 260px !important;
+  }
+
+  html.mobile-device .model-content {
+    padding-top: 20px !important;
+  }
+
+  .mobile-pager button {
+    min-width: 96px;
+    padding: 10px 12px;
+  }
+}
