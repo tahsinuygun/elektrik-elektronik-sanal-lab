@@ -137,3 +137,26 @@ html.ios-device .model-preview {
     padding: 10px 12px;
   }
 }
+
+
+/* v21: iOS'ta aynı anda yalnızca TEK canlı GLB tutulur. */
+html.ios-device .model-grid {
+  display: block !important;
+}
+
+html.ios-device .model-card {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+html.ios-device .ios-single-note {
+  display: block;
+  text-align: center;
+  color: #8fa7ba;
+  font-size: .82rem;
+  margin: -4px 0 14px;
+}
+
+.ios-single-note {
+  display: none;
+}
