@@ -10,7 +10,6 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 MODELS_ROOT = ROOT / "assets" / "models"
 CATALOG_PATH = ROOT / "data" / "catalog.json"
-PREVIEWS_ROOT = ROOT / "assets" / "previews"
 
 TURKISH_UPPER = str.maketrans({
     "i": "İ", "ı": "I", "ş": "Ş", "ğ": "Ğ", "ü": "Ü", "ö": "Ö", "ç": "Ç"
@@ -27,6 +26,7 @@ def title_from_filename(stem: str) -> str:
     words: list[str] = []
 
     for word in clean.split():
+        # Kullanıcının yazdığı büyük/küçük harfleri mümkün olduğunca koru.
         if word != word.lower():
             words.append(word)
             continue
@@ -61,8 +61,6 @@ def main() -> None:
     departments = catalog.get("departments", [])
     department_names = {item["id"]: item["name"] for item in departments}
 
-    PREVIEWS_ROOT.mkdir(parents=True, exist_ok=True)
-
     models: list[dict] = []
     used_ids: set[str] = set()
 
@@ -89,8 +87,9 @@ def main() -> None:
             used_ids.add(model_id)
 
             relative = glb_path.relative_to(ROOT).as_posix()
-            content_hash = short_hash(glb_path)
 
+            # USDZ isteğe bağlıdır. Varsa aynı klasörde aynı ada sahip dosyayı otomatik eşleştir.
+            # Yoksa iOS Quick Look için <model-viewer> GLB üzerinden çalışma anında USDZ üretir.
             usdz_path = next(
                 (
                     candidate
@@ -106,10 +105,7 @@ def main() -> None:
                 "id": model_id,
                 "title": title,
                 "department": department_id,
-                "glb": f"{relative}?v={content_hash}",
-                # Poster dosyası GitHub Actions sırasında gerçek GLB'den otomatik üretilir.
-                # Sürüm değeri GLB içeriğine bağlıdır; model değişince poster URL'si de değişir.
-                "poster": f"assets/previews/{model_id}.png?v={content_hash}",
+                "glb": f"{relative}?v={short_hash(glb_path)}",
                 "description": (
                     f"{title} modelinin üç boyutlu ve artırılmış gerçeklik "
                     "ortamında incelenmesi."
@@ -134,8 +130,7 @@ def main() -> None:
         json.dumps(catalog, ensure_ascii=False, indent=2) + "\n",
         encoding="utf-8"
     )
-
-    print(f"{len(models)} model kataloğa eklendi. Her model için statik WebP poster yolu oluşturuldu.")
+    print(f"{len(models)} model otomatik olarak kataloğa eklendi. USDZ dosyaları isteğe bağlı olarak eşleştirildi; yalnızca GLB bulunan modeller de iOS/Android AR için kullanılabilir.")
 
 
 if __name__ == "__main__":
