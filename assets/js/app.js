@@ -5,7 +5,8 @@ const state={
   deferredPrompt:null,
   activeModelId:null,
   viewerBusy:false,
-  mobilePage:0
+  mobilePage:0,
+  pageChanging:false
 };
 
 const MOBILE_PAGE_SIZE=3;
@@ -21,8 +22,7 @@ function platform(){
 }
 
 function isMobile(){
-  const p=platform();
-  return p==="ios" || p==="android";
+  return platform()==="ios" || platform()==="android";
 }
 
 function platformText(){
@@ -48,16 +48,19 @@ function escapeHtml(v){
 
 function renderFilters(){
   const all=[{id:"all",name:"Tümü",icon:"◈"},...state.catalog.departments];
+
   departmentsEl.innerHTML=all.map(d=>
     `<button class="filter-button ${state.department===d.id?"active":""}" data-department="${d.id}" role="tab">${d.icon||""} ${d.name}</button>`
   ).join("");
 
   departmentsEl.querySelectorAll("button").forEach(b=>
-    b.addEventListener("click",()=>{
+    b.addEventListener("click",async()=>{
+      if(state.pageChanging) return;
+      releaseCardViewers();
       state.department=b.dataset.department;
       state.mobilePage=0;
       renderFilters();
-      renderModels();
+      await renderModels(true);
     })
   );
 }
@@ -72,23 +75,34 @@ function filteredModels(){
 }
 
 /*
-  Kartta görülen resim, gerçek GLB modelinden GitHub Actions/Blender ile
-  otomatik üretilmiş statik posterdir. Kullanıcı karta girmeden modeli görür.
-  Canlı 3B model yalnızca karta tıklanınca açılır.
+  İstenen görünüm:
+  Kartın içinde doğrudan gerçek GLB model-viewer bulunur.
+  Poster, Mi logosu veya statik render kullanılmaz.
+
+  Mobil kararlılık:
+  iOS ve Android'de aynı anda yalnızca 3 kart DOM'dadır.
+  Sonraki/Önceki geçişinde eski 3 model pause edilir, src kaldırılır,
+  kısa bekleme sonrasında yeni 3 model yüklenir.
 */
 function card(m){
-  const poster=m.poster || "assets/images/icon.svg";
-  const loadMode=isMobile() ? "eager" : "lazy";
-
   return `<article class="model-card" data-id="${m.id}" tabindex="0">
     <div class="model-preview">
-      <img
-        src="${poster}"
-        alt="${escapeHtml(m.title)} 3B model önizlemesi"
-        loading="${loadMode}"
-        decoding="async"
-        ${isMobile() ? 'fetchpriority="high"' : 'fetchpriority="low"'}
-        onerror="this.onerror=null;this.src='assets/images/icon.svg';this.style.objectFit='scale-down';this.style.padding='18%';">
+      <model-viewer
+        class="card-viewer"
+        data-model-id="${m.id}"
+        src="${m.glb}"
+        alt="${escapeHtml(m.title)}"
+        camera-orbit="45deg 70deg 2.6m"
+        environment-image="neutral"
+        tone-mapping="neutral"
+        exposure="1.15"
+        shadow-intensity="0"
+        interaction-prompt="none"
+        loading="eager"
+        reveal="auto"
+        disable-pan
+        disable-zoom>
+      </model-viewer>
       <div class="card-platforms"><span>${m.usdz ? "GLB + USDZ • AR" : "GLB • iOS/Android AR"}</span></div>
     </div>
     <div class="model-content">
@@ -103,6 +117,16 @@ function card(m){
   </article>`;
 }
 
+function releaseCardViewers(){
+  gridEl.querySelectorAll(".card-viewer").forEach(v=>{
+    try{
+      if(typeof v.pause==="function") v.pause();
+    }catch(_){}
+    v.removeAttribute("src");
+    v.removeAttribute("ios-src");
+  });
+}
+
 function ensurePager(){
   let pager=document.getElementById("mobilePager");
 
@@ -115,27 +139,37 @@ function ensurePager(){
       <span id="mobilePageInfo">1 / 1</span>
       <button type="button" id="mobileNext">Sonraki ›</button>
     `;
-
     gridEl.insertAdjacentElement("afterend",pager);
 
-    pager.querySelector("#mobilePrev").addEventListener("click",()=>{
-      if(state.mobilePage<=0) return;
-      state.mobilePage--;
-      renderModels();
-      scrollGridIntoView();
-    });
-
-    pager.querySelector("#mobileNext").addEventListener("click",()=>{
-      const total=filteredModels().length;
-      const pages=Math.max(1,Math.ceil(total/MOBILE_PAGE_SIZE));
-      if(state.mobilePage>=pages-1) return;
-      state.mobilePage++;
-      renderModels();
-      scrollGridIntoView();
-    });
+    pager.querySelector("#mobilePrev").addEventListener("click",()=>changeMobilePage(-1));
+    pager.querySelector("#mobileNext").addEventListener("click",()=>changeMobilePage(1));
   }
 
   return pager;
+}
+
+async function changeMobilePage(delta){
+  if(!isMobile() || state.pageChanging) return;
+
+  const total=filteredModels().length;
+  const pages=Math.max(1,Math.ceil(total/MOBILE_PAGE_SIZE));
+  const next=state.mobilePage+delta;
+
+  if(next<0 || next>=pages) return;
+
+  state.pageChanging=true;
+
+  releaseCardViewers();
+  gridEl.innerHTML="";
+
+  // WebKit/Chromium'un eski WebGL kaynaklarını bırakması için kısa aralık.
+  await wait(platform()==="ios" ? 320 : 180);
+
+  state.mobilePage=next;
+  await renderModels(false);
+  scrollGridIntoView();
+
+  state.pageChanging=false;
 }
 
 function scrollGridIntoView(){
@@ -154,18 +188,23 @@ function updatePager(total){
   pager.style.display="flex";
 
   const pages=Math.max(1,Math.ceil(total/MOBILE_PAGE_SIZE));
-  state.mobilePage=Math.min(state.mobilePage,pages-1);
+  state.mobilePage=Math.min(Math.max(0,state.mobilePage),pages-1);
 
   pager.querySelector("#mobilePageInfo").textContent=`${state.mobilePage+1} / ${pages}`;
-  pager.querySelector("#mobilePrev").disabled=state.mobilePage===0;
-  pager.querySelector("#mobileNext").disabled=state.mobilePage>=pages-1;
+  pager.querySelector("#mobilePrev").disabled=state.mobilePage===0 || state.pageChanging;
+  pager.querySelector("#mobileNext").disabled=state.mobilePage>=pages-1 || state.pageChanging;
 }
 
-function renderModels(){
+async function renderModels(releaseFirst=false){
+  if(releaseFirst){
+    releaseCardViewers();
+    gridEl.innerHTML="";
+    await wait(platform()==="ios" ? 220 : 100);
+  }
+
   const all=filteredModels();
   let list=all;
 
-  // Hem iOS hem Android: ana sayfada 3 gerçek model posteri + Önceki/Sonraki.
   if(isMobile()){
     const pages=Math.max(1,Math.ceil(all.length/MOBILE_PAGE_SIZE));
     if(state.mobilePage>=pages) state.mobilePage=pages-1;
@@ -219,9 +258,15 @@ function releaseViewer(){
   state.viewerBusy=false;
 }
 
-function openModel(id){
+async function openModel(id){
+  if(state.viewerBusy) return;
+
   const m=state.catalog.models.find(x=>x.id===id);
   if(!m) return;
+
+  // Ana model açılırken kartlardaki 3 GLB'yi GPU'dan çıkar.
+  releaseCardViewers();
+  await wait(platform()==="ios" ? 180 : 80);
 
   const v=$("#mainViewer");
   const arButton=v.querySelector('[slot="ar-button"]');
@@ -278,12 +323,21 @@ function openModel(id){
   );
 }
 
-function closeViewer(){
+async function closeViewer(){
   const dialog=$("#viewerDialog");
   if(dialog.open) dialog.close();
 
-  setTimeout(releaseViewer,80);
+  releaseViewer();
+  await wait(platform()==="ios" ? 180 : 80);
+
+  // Ana pencere kapanınca mevcut sayfanın 3 canlı önizlemesini geri getir.
+  await renderModels(false);
+
   history.replaceState(null,"",location.pathname);
+}
+
+function wait(ms){
+  return new Promise(resolve=>setTimeout(resolve,ms));
 }
 
 async function init(){
@@ -294,16 +348,19 @@ async function init(){
   $("#platformBadge").textContent=platformText();
 
   renderFilters();
-  renderModels();
+  await renderModels(false);
 
   const id=new URLSearchParams(location.search).get("model");
   if(id) setTimeout(()=>openModel(id),250);
 }
 
+let searchTimer=null;
 $("#searchInput").addEventListener("input",e=>{
   state.query=e.target.value;
   state.mobilePage=0;
-  renderModels();
+
+  clearTimeout(searchTimer);
+  searchTimer=setTimeout(()=>renderModels(true),120);
 });
 
 $("#dialogClose").addEventListener("click",closeViewer);
@@ -313,7 +370,9 @@ $("#viewerDialog").addEventListener("click",e=>{
 });
 
 $("#viewerDialog").addEventListener("close",()=>{
-  if(state.activeModelId) setTimeout(releaseViewer,80);
+  if(state.activeModelId){
+    releaseViewer();
+  }
 });
 
 $("#howButton").addEventListener("click",()=>$("#howDialog").showModal());
@@ -357,13 +416,16 @@ $("#installButton").addEventListener("click",async()=>{
 
 if("serviceWorker" in navigator){
   window.addEventListener("load",()=>{
-    navigator.serviceWorker.register("sw.js?v=15")
+    navigator.serviceWorker.register("sw.js?v=16")
       .then(reg=>reg.update())
       .catch(console.error);
   });
 }
 
-window.addEventListener("pagehide",releaseViewer);
+window.addEventListener("pagehide",()=>{
+  releaseCardViewers();
+  releaseViewer();
+});
 
 init().catch(err=>{
   console.error(err);
