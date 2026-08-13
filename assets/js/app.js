@@ -4,9 +4,7 @@ const state={
   query:"",
   deferredPrompt:null,
   activeModelId:null,
-  viewerBusy:false,
-  previewObserver:null,
-  activePreviewIds:new Set()
+  viewerBusy:false
 };
 
 const $=s=>document.querySelector(s);
@@ -17,11 +15,6 @@ function platform(){
   if(/iPad|iPhone|iPod/.test(ua)) return "ios";
   if(/Android/.test(ua)) return "android";
   return "desktop";
-}
-
-function isMobile(){
-  const p=platform();
-  return p==="ios" || p==="android";
 }
 
 function platformText(){
@@ -70,28 +63,23 @@ function filteredModels(){
 }
 
 /*
-  Kartların içinde model-viewer görünür durumda kalır, fakat src başlangıçta verilmez.
-  GLB yalnızca kart ekranda gerçekten görünür olduğunda yüklenir.
-  iOS/Android'de aynı anda yalnızca 1 kart önizlemesi tutulur.
-  Kart ekrandan çıkınca src kaldırılır ve GPU/WebGL belleği serbest bırakılır.
+  iOS kararlılık yaklaşımı:
+  Kartlarda canlı <model-viewer> YOKTUR. Her kart gerçek GLB modelinden
+  GitHub Actions sırasında otomatik üretilen WebP poster görselini gösterir.
+  Bu nedenle sayfa kaydırılırken WebGL/GPU belleğine model veya doku yüklenmez.
+  Canlı 3B model yalnızca kullanıcı karta dokunduğunda ana görüntüleyicide açılır.
 */
 function card(m){
+  const poster=m.poster || "assets/images/icon.svg";
   return `<article class="model-card" data-id="${m.id}" tabindex="0">
     <div class="model-preview">
-      <model-viewer
-        class="card-viewer"
-        data-model-id="${m.id}"
-        alt="${escapeHtml(m.title)}"
-        camera-orbit="45deg 70deg 2.6m"
-        environment-image="neutral"
-        tone-mapping="neutral"
-        exposure="1.15"
-        shadow-intensity="0"
-        interaction-prompt="none"
-        loading="eager"
-        reveal="auto"
-        style="width:100%;height:100%;background:transparent;">
-      </model-viewer>
+      <img
+        src="${poster}"
+        alt="${escapeHtml(m.title)} 3B model önizlemesi"
+        loading="lazy"
+        decoding="async"
+        style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:transparent;"
+        onerror="this.onerror=null;this.src='assets/images/icon.svg';this.style.objectFit='scale-down';this.style.padding='18%';">
       <div class="card-platforms"><span>${m.usdz ? "GLB + USDZ • AR" : "GLB • iOS/Android AR"}</span></div>
     </div>
     <div class="model-content">
@@ -106,80 +94,7 @@ function card(m){
   </article>`;
 }
 
-function clearCardViewer(viewer){
-  if(!viewer) return;
-  try{
-    if(typeof viewer.pause==="function") viewer.pause();
-  }catch(_){}
-  viewer.removeAttribute("src");
-  const id=viewer.dataset.modelId;
-  if(id) state.activePreviewIds.delete(id);
-}
-
-function clearAllCardPreviews(){
-  gridEl.querySelectorAll(".card-viewer").forEach(clearCardViewer);
-  state.activePreviewIds.clear();
-}
-
-function loadCardPreview(viewer){
-  if(!viewer || viewer.hasAttribute("src")) return;
-  const id=viewer.dataset.modelId;
-  const m=state.catalog.models.find(x=>x.id===id);
-  if(!m) return;
-
-  // Telefonda sadece tek canlı kart önizlemesi tut.
-  if(isMobile()){
-    gridEl.querySelectorAll(".card-viewer").forEach(v=>{
-      if(v!==viewer) clearCardViewer(v);
-    });
-  }
-
-  viewer.setAttribute("src",m.glb);
-  state.activePreviewIds.add(id);
-}
-
-function setupPreviewObserver(){
-  if(state.previewObserver) state.previewObserver.disconnect();
-
-  state.previewObserver=new IntersectionObserver(entries=>{
-    // Mobilde ekranda en görünür kartı seç.
-    if(isMobile()){
-      const visible=entries
-        .filter(e=>e.isIntersecting && e.intersectionRatio>0.08)
-        .sort((a,b)=>b.intersectionRatio-a.intersectionRatio);
-
-      if(visible.length){
-        const viewer=visible[0].target.querySelector(".card-viewer");
-        loadCardPreview(viewer);
-      }
-
-      entries.filter(e=>!e.isIntersecting).forEach(e=>{
-        clearCardViewer(e.target.querySelector(".card-viewer"));
-      });
-      return;
-    }
-
-    // Masaüstünde yalnızca ekranda olan kartlar yüklü kalır.
-    entries.forEach(entry=>{
-      const viewer=entry.target.querySelector(".card-viewer");
-      if(entry.isIntersecting && entry.intersectionRatio>0.05){
-        loadCardPreview(viewer);
-      }else{
-        clearCardViewer(viewer);
-      }
-    });
-  },{
-    root:null,
-    rootMargin:isMobile() ? "80px 0px" : "120px 0px",
-    threshold:[0,0.05,0.1,0.25,0.5,0.75]
-  });
-
-  gridEl.querySelectorAll(".model-card").forEach(card=>state.previewObserver.observe(card));
-}
-
 function renderModels(){
-  clearAllCardPreviews();
-
   const list=filteredModels();
   gridEl.innerHTML=list.map(card).join("");
   emptyEl.hidden=list.length!==0;
@@ -206,19 +121,20 @@ function renderModels(){
       }
     });
   });
-
-  setupPreviewObserver();
 }
 
 function releaseViewer(){
   const v=$("#mainViewer");
   if(!v) return;
+
   try{
     if(typeof v.pause==="function") v.pause();
   }catch(_){}
+
   v.autoRotate=false;
   v.removeAttribute("src");
   v.removeAttribute("ios-src");
+
   state.activeModelId=null;
   state.viewerBusy=false;
 }
@@ -226,9 +142,6 @@ function releaseViewer(){
 function openModel(id){
   const m=state.catalog.models.find(x=>x.id===id);
   if(!m) return;
-
-  // Ana modeli açmadan önce kart önizlemelerinin tamamını boşalt.
-  clearAllCardPreviews();
 
   const v=$("#mainViewer");
   const arButton=v.querySelector('[slot="ar-button"]');
@@ -288,12 +201,7 @@ function openModel(id){
 function closeViewer(){
   const dialog=$("#viewerDialog");
   if(dialog.open) dialog.close();
-
-  setTimeout(()=>{
-    releaseViewer();
-    setupPreviewObserver();
-  },100);
-
+  setTimeout(releaseViewer,80);
   history.replaceState(null,"",location.pathname);
 }
 
@@ -321,12 +229,7 @@ $("#viewerDialog").addEventListener("click",e=>{
   if(e.target===$("#viewerDialog")) closeViewer();
 });
 $("#viewerDialog").addEventListener("close",()=>{
-  if(state.activeModelId){
-    setTimeout(()=>{
-      releaseViewer();
-      setupPreviewObserver();
-    },100);
-  }
+  if(state.activeModelId) setTimeout(releaseViewer,80);
 });
 
 $("#howButton").addEventListener("click",()=>$("#howDialog").showModal());
@@ -370,14 +273,11 @@ $("#installButton").addEventListener("click",async()=>{
 
 if("serviceWorker" in navigator){
   window.addEventListener("load",()=>{
-    navigator.serviceWorker.register("sw.js?v=12").then(reg=>reg.update()).catch(console.error);
+    navigator.serviceWorker.register("sw.js?v=13").then(reg=>reg.update()).catch(console.error);
   });
 }
 
-window.addEventListener("pagehide",()=>{
-  clearAllCardPreviews();
-  releaseViewer();
-});
+window.addEventListener("pagehide",releaseViewer);
 
 init().catch(err=>{
   console.error(err);
