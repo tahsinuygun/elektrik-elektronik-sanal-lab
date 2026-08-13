@@ -1,10 +1,10 @@
-const CACHE = 'eem-sanal-lab-stable-v13';
+const CACHE = 'eem-sanal-lab-stable-v14';
 
 const SHELL = [
   './',
   'index.html',
   'assets/css/styles.css',
-  'assets/js/app.js?v=13',
+  'assets/js/app.js?v=14',
   'data/catalog.json',
   'assets/images/icon.svg',
   'assets/images/logo.png'
