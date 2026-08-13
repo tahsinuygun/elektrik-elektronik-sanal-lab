@@ -10,7 +10,7 @@
   <link rel="apple-touch-icon" href="assets/images/apple-touch-icon.png" />
   <link rel="stylesheet" href="assets/css/styles.css" />
   <title>Elektrik-Elektronik Mühendisliği Sanal Laboratuvarı</title>
-  <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
+  <script type="module" src="https://unpkg.com/@google/model-viewer@4.3.1/dist/model-viewer.min.js"></script>
 </head>
 <body>
   <div class="bg-orb orb-a"></div><div class="bg-orb orb-b"></div>
@@ -71,7 +71,6 @@
       <div class="viewer-column viewer-column-simple">
         <model-viewer id="mainViewer"
           camera-controls
-          auto-rotate
           environment-image="neutral"
           tone-mapping="neutral"
           exposure="1.15"
@@ -84,7 +83,7 @@
         </model-viewer>
         <div class="viewer-toolbar">
           <button id="resetViewButton">Görünümü sıfırla</button>
-          <button id="toggleRotateButton">Otomatik döndür: açık</button>
+          <button id="toggleRotateButton">Otomatik döndür: kapalı</button>
         </div>
         <div class="simple-viewer-tip">
           <b>İpucu:</b> Tek parmakla döndürün, iki parmakla yakınlaştırın. AR modunda zemini yavaşça tarayın.
