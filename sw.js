@@ -1,10 +1,11 @@
-const CACHE = 'eem-sanal-lab-stable-v15';
+const CACHE = 'eem-sanal-lab-live-v16';
 
 const SHELL = [
   './',
   'index.html',
   'assets/css/styles.css',
-  'assets/js/app.js?v=15',
+  'assets/css/mobile-safe.css?v=16',
+  'assets/js/app.js?v=16',
   'data/catalog.json',
   'assets/images/icon.svg',
   'assets/images/logo.png'
@@ -37,13 +38,17 @@ self.addEventListener('fetch', event => {
   const isGLB = path.endsWith('.glb');
   const isUSDZ = path.endsWith('.usdz');
 
-  // Büyük 3B model dosyaları Cache Storage'a kopyalanmaz.
+  /*
+    GLB/USDZ Cache Storage'a kopyalanmaz.
+    Ancak fetch'te no-store zorlanmaz; URL'deki SHA-256 sürüm parametresi
+    değiştiğinde tarayıcı zaten yeni dosyayı ister. Böylece Önceki/Sonraki
+    dönüşlerinde aynı büyük model gereksiz yere tekrar indirilmez.
+  */
   if (isGLB || isUSDZ) {
-    event.respondWith(fetch(event.request, { cache: 'no-store' }));
+    event.respondWith(fetch(event.request));
     return;
   }
 
-  // Katalog güncel olmalı.
   if (isCatalog) {
     event.respondWith(
       fetch(event.request, { cache: 'no-store' })
@@ -59,7 +64,6 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // Poster ve diğer statik kaynaklar cache-first.
   event.respondWith(
     caches.match(event.request).then(cached =>
       cached ||
