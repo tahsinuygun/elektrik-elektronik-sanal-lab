@@ -9,7 +9,9 @@ const state={
   pageChanging:false
 };
 
-const MOBILE_PAGE_SIZE=3;
+const ANDROID_PAGE_SIZE=3;
+const IOS_PAGE_SIZE=1;
+
 const $=s=>document.querySelector(s);
 const departmentsEl=$("#departmentFilters"),gridEl=$("#modelGrid"),emptyEl=$("#emptyState");
 
@@ -25,10 +27,16 @@ function isMobile(){
   return platform()==="ios" || platform()==="android";
 }
 
+function pageSize(){
+  if(platform()==="ios") return IOS_PAGE_SIZE;
+  if(platform()==="android") return ANDROID_PAGE_SIZE;
+  return Number.MAX_SAFE_INTEGER;
+}
+
 function platformText(){
   const p=platform(), forced=new URLSearchParams(location.search).get("platform");
-  if(forced==="ios"||p==="ios") return "iPhone / iPad algılandı • Quick Look AR";
-  if(forced==="android"||p==="android") return "Android algılandı • GLB ile AR";
+  if(forced==="ios"||p==="ios") return "iPhone / iPad • tek canlı model • Quick Look AR";
+  if(forced==="android"||p==="android") return "Android • 3 model/sayfa • GLB ile AR";
   return "Masaüstü 3B görüntüleme";
 }
 
@@ -46,6 +54,11 @@ function escapeHtml(v){
   })[c]);
 }
 
+function currentPageFromUrl(){
+  const n=parseInt(new URLSearchParams(location.search).get("page")||"1",10);
+  return Number.isFinite(n) && n>0 ? n-1 : 0;
+}
+
 function renderFilters(){
   const all=[{id:"all",name:"Tümü",icon:"◈"},...state.catalog.departments];
 
@@ -54,13 +67,13 @@ function renderFilters(){
   ).join("");
 
   departmentsEl.querySelectorAll("button").forEach(b=>
-    b.addEventListener("click",async()=>{
+    b.addEventListener("click",()=>{
       if(state.pageChanging) return;
       releaseCardViewers();
       state.department=b.dataset.department;
       state.mobilePage=0;
       renderFilters();
-      await renderModels(true);
+      renderModels();
     })
   );
 }
@@ -75,14 +88,10 @@ function filteredModels(){
 }
 
 /*
-  İstenen görünüm:
-  Kartın içinde doğrudan gerçek GLB model-viewer bulunur.
-  Poster, Mi logosu veya statik render kullanılmaz.
-
-  Mobil kararlılık:
-  iOS ve Android'de aynı anda yalnızca 3 kart DOM'dadır.
-  Sonraki/Önceki geçişinde eski 3 model pause edilir, src kaldırılır,
-  kısa bekleme sonrasında yeni 3 model yüklenir.
+  Kartta poster yoktur.
+  Her kart doğrudan orijinal GLB'yi <model-viewer> ile gösterir.
+  iOS'ta DOM'da yalnızca 1 kart bulunur.
+  Android'de 3 kart/sayfa, masaüstünde tüm kartlar bulunur.
 */
 function card(m){
   return `<article class="model-card" data-id="${m.id}" tabindex="0">
@@ -93,9 +102,8 @@ function card(m){
         src="${m.glb}"
         alt="${escapeHtml(m.title)}"
         camera-orbit="45deg 70deg 2.6m"
-        environment-image="neutral"
         tone-mapping="neutral"
-        exposure="1.15"
+        exposure="1.05"
         shadow-intensity="0"
         interaction-prompt="none"
         loading="eager"
@@ -124,6 +132,9 @@ function releaseCardViewers(){
     }catch(_){}
     v.removeAttribute("src");
     v.removeAttribute("ios-src");
+    try{
+      v.remove();
+    }catch(_){}
   });
 }
 
@@ -148,38 +159,16 @@ function ensurePager(){
   return pager;
 }
 
-async function changeMobilePage(delta){
-  if(!isMobile() || state.pageChanging) return;
-
-  const total=filteredModels().length;
-  const pages=Math.max(1,Math.ceil(total/MOBILE_PAGE_SIZE));
-  const next=state.mobilePage+delta;
-
-  if(next<0 || next>=pages) return;
-
-  state.pageChanging=true;
-  updatePager(total);
-
-  releaseCardViewers();
-  gridEl.innerHTML="";
-
-  // WebKit/Chromium'un eski WebGL kaynaklarını bırakması için kısa aralık.
-  await wait(platform()==="ios" ? 320 : 180);
-
-  state.mobilePage=next;
-  await renderModels(false);
-  scrollGridIntoView();
-
-  // KRİTİK DÜZELTME:
-  // v16'da renderModels() çalışırken pageChanging hâlâ true olduğu için
-  // Önceki ve Sonraki butonları disabled kalıyordu.
-  state.pageChanging=false;
-  updatePager(total);
-}
-
-function scrollGridIntoView(){
-  const y=gridEl.getBoundingClientRect().top+window.scrollY-90;
-  window.scrollTo({top:Math.max(0,y),behavior:"smooth"});
+function ensureIosNote(){
+  let note=document.getElementById("iosSingleNote");
+  if(!note){
+    note=document.createElement("div");
+    note.id="iosSingleNote";
+    note.className="ios-single-note";
+    note.textContent="iOS kararlılığı için modeller tek tek gösterilir.";
+    gridEl.insertAdjacentElement("beforebegin",note);
+  }
+  note.style.display=platform()==="ios" ? "block" : "none";
 }
 
 function updatePager(total){
@@ -192,7 +181,8 @@ function updatePager(total){
 
   pager.style.display="flex";
 
-  const pages=Math.max(1,Math.ceil(total/MOBILE_PAGE_SIZE));
+  const size=pageSize();
+  const pages=Math.max(1,Math.ceil(total/size));
   state.mobilePage=Math.min(Math.max(0,state.mobilePage),pages-1);
 
   pager.querySelector("#mobilePageInfo").textContent=`${state.mobilePage+1} / ${pages}`;
@@ -200,22 +190,71 @@ function updatePager(total){
   pager.querySelector("#mobileNext").disabled=(state.mobilePage>=pages-1) || state.pageChanging;
 }
 
-async function renderModels(releaseFirst=false){
-  if(releaseFirst){
+function navigateIosPage(nextPage){
+  /*
+    iOS'ta dinamik olarak model src değiştirmek yerine yeni bir belge yükletiyoruz.
+    Böylece önceki WebGL/canvas/GPU kaynaklarının mevcut sayfada birikmesini önlüyoruz.
+  */
+  const params=new URLSearchParams(location.search);
+  params.delete("model");
+  params.set("page", String(nextPage+1));
+  params.set("platform","ios");
+  params.set("nav", String(Date.now()));
+
+  location.assign(`${location.pathname}?${params.toString()}`);
+}
+
+async function changeMobilePage(delta){
+  if(!isMobile() || state.pageChanging) return;
+
+  const total=filteredModels().length;
+  const size=pageSize();
+  const pages=Math.max(1,Math.ceil(total/size));
+  const next=state.mobilePage+delta;
+
+  if(next<0 || next>=pages) return;
+
+  // iOS: gerçek tam sayfa navigasyonu.
+  if(platform()==="ios"){
+    state.pageChanging=true;
+    updatePager(total);
     releaseCardViewers();
-    gridEl.innerHTML="";
-    await wait(platform()==="ios" ? 220 : 100);
+    setTimeout(()=>navigateIosPage(next),80);
+    return;
   }
 
+  // Android: mevcut dinamik sayfalama yeterince kararlı.
+  state.pageChanging=true;
+  updatePager(total);
+
+  releaseCardViewers();
+  gridEl.innerHTML="";
+  await wait(160);
+
+  state.mobilePage=next;
+  renderModels();
+
+  state.pageChanging=false;
+  updatePager(total);
+  scrollGridIntoView();
+}
+
+function scrollGridIntoView(){
+  const y=gridEl.getBoundingClientRect().top+window.scrollY-90;
+  window.scrollTo({top:Math.max(0,y),behavior:"smooth"});
+}
+
+function renderModels(){
   const all=filteredModels();
   let list=all;
 
   if(isMobile()){
-    const pages=Math.max(1,Math.ceil(all.length/MOBILE_PAGE_SIZE));
+    const size=pageSize();
+    const pages=Math.max(1,Math.ceil(all.length/size));
     if(state.mobilePage>=pages) state.mobilePage=pages-1;
 
-    const start=state.mobilePage*MOBILE_PAGE_SIZE;
-    list=all.slice(start,start+MOBILE_PAGE_SIZE);
+    const start=state.mobilePage*size;
+    list=all.slice(start,start+size);
   }
 
   gridEl.innerHTML=list.map(card).join("");
@@ -244,6 +283,7 @@ async function renderModels(releaseFirst=false){
     });
   });
 
+  ensureIosNote();
   updatePager(all.length);
 }
 
@@ -269,9 +309,9 @@ async function openModel(id){
   const m=state.catalog.models.find(x=>x.id===id);
   if(!m) return;
 
-  // Ana model açılırken kartlardaki 3 GLB'yi GPU'dan çıkar.
+  // Ana model açılırken karttaki GLB'yi kapat.
   releaseCardViewers();
-  await wait(platform()==="ios" ? 180 : 80);
+  await wait(platform()==="ios" ? 120 : 60);
 
   const v=$("#mainViewer");
   const arButton=v.querySelector('[slot="ar-button"]');
@@ -333,11 +373,25 @@ async function closeViewer(){
   if(dialog.open) dialog.close();
 
   releaseViewer();
-  await wait(platform()==="ios" ? 180 : 80);
 
-  // Ana pencere kapanınca mevcut sayfanın 3 canlı önizlemesini geri getir.
-  await renderModels(false);
+  if(platform()==="ios"){
+    /*
+      iOS'ta ana model açılıp kapandıktan sonra kart GLB'sini aynı belgeye tekrar
+      yüklemek yerine sayfayı yenileyerek temiz bir WebGL oturumu başlat.
+    */
+    setTimeout(()=>{
+      const params=new URLSearchParams(location.search);
+      params.delete("model");
+      params.set("page",String(state.mobilePage+1));
+      params.set("platform","ios");
+      params.set("nav",String(Date.now()));
+      location.replace(`${location.pathname}?${params.toString()}`);
+    },80);
+    return;
+  }
 
+  await wait(80);
+  renderModels();
   history.replaceState(null,"",location.pathname);
 }
 
@@ -346,15 +400,20 @@ function wait(ms){
 }
 
 async function init(){
-  console.info("EEM Sanal Lab build v20", {platform: platform()});
+  console.info("EEM Sanal Lab build v21", {platform: platform()});
+
   const res=await fetch("data/catalog.json",{cache:"no-store"});
   if(!res.ok) throw new Error(`catalog.json HTTP ${res.status}`);
 
   state.catalog=await res.json();
   $("#platformBadge").textContent=platformText();
 
+  if(platform()==="ios"){
+    state.mobilePage=currentPageFromUrl();
+  }
+
   renderFilters();
-  await renderModels(false);
+  renderModels();
 
   const id=new URLSearchParams(location.search).get("model");
   if(id) setTimeout(()=>openModel(id),250);
@@ -366,7 +425,10 @@ $("#searchInput").addEventListener("input",e=>{
   state.mobilePage=0;
 
   clearTimeout(searchTimer);
-  searchTimer=setTimeout(()=>renderModels(true),120);
+  searchTimer=setTimeout(()=>{
+    releaseCardViewers();
+    renderModels();
+  },120);
 });
 
 $("#dialogClose").addEventListener("click",closeViewer);
@@ -422,7 +484,7 @@ $("#installButton").addEventListener("click",async()=>{
 
 if("serviceWorker" in navigator){
   window.addEventListener("load",()=>{
-    navigator.serviceWorker.register("sw.js?v=20")
+    navigator.serviceWorker.register("sw.js?v=21")
       .then(reg=>reg.update())
       .catch(console.error);
   });
