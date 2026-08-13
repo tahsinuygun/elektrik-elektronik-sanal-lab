@@ -1,10 +1,10 @@
-const CACHE = 'eem-sanal-lab-stable-v12';
+const CACHE = 'eem-sanal-lab-stable-v13';
 
 const SHELL = [
   './',
   'index.html',
   'assets/css/styles.css',
-  'assets/js/app.js',
+  'assets/js/app.js?v=13',
   'data/catalog.json',
   'assets/images/icon.svg',
   'assets/images/logo.png'
@@ -30,8 +30,6 @@ self.addEventListener('fetch', event => {
   if (event.request.method !== 'GET') return;
 
   const url = new URL(event.request.url);
-
-  // CDN ve diğer harici kaynakları Service Worker önbelleğine alma.
   if (url.origin !== self.location.origin) return;
 
   const path = url.pathname.toLowerCase();
@@ -39,18 +37,13 @@ self.addEventListener('fetch', event => {
   const isGLB = path.endsWith('.glb');
   const isUSDZ = path.endsWith('.usdz');
 
-  /*
-    Büyük 3B model yanıtlarını Cache Storage'a kopyalamıyoruz.
-    Önceki sürümde response.clone() + cache.put() kullanımı aynı model
-    yanıtının ek kopyasını oluşturabiliyordu. iOS tarafında bellek baskısını
-    azaltmak için GLB/USDZ doğrudan ağdan alınır.
-  */
+  // Büyük 3B model dosyaları Cache Storage'a kopyalanmaz.
   if (isGLB || isUSDZ) {
     event.respondWith(fetch(event.request, { cache: 'no-store' }));
     return;
   }
 
-  // Katalog küçük: network-first, ağ yoksa önbellek.
+  // Katalog güncel olmalı.
   if (isCatalog) {
     event.respondWith(
       fetch(event.request, { cache: 'no-store' })
@@ -66,7 +59,7 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // Statik uygulama kabuğu: cache-first.
+  // Poster ve diğer statik kaynaklar cache-first.
   event.respondWith(
     caches.match(event.request).then(cached =>
       cached ||
