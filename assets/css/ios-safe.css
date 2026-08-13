@@ -1,0 +1,140 @@
+
+/*
+  iOS Safari kararlılık katmanı
+  --------------------------------
+  Kartlarda canlı WebGL yoktur. Buna ek olarak Safari'nin uzun sayfalarda
+  pahalı compositing katmanları üretmesini azaltmak için blur/backdrop-filter,
+  büyük gölgeler, gereksiz transform/will-change ve dekoratif pseudo katmanlar
+  yalnızca iOS üzerinde devre dışı bırakılır.
+*/
+
+html.ios-device,
+html.ios-device body {
+  background: #07131f !important;
+  background-image: linear-gradient(180deg, #07131f 0%, #0b1c2c 100%) !important;
+  background-attachment: scroll !important;
+}
+
+/* Büyük dekoratif arka plan katmanları */
+html.ios-device body::before,
+html.ios-device body::after,
+html.ios-device main::before,
+html.ios-device main::after,
+html.ios-device .page-shell::before,
+html.ios-device .page-shell::after,
+html.ios-device .hero::before,
+html.ios-device .hero::after {
+  display: none !important;
+  content: none !important;
+}
+
+/* Safari compositor yükünü azalt */
+html.ios-device *,
+html.ios-device *::before,
+html.ios-device *::after {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  filter: none !important;
+  will-change: auto !important;
+}
+
+html.ios-device .model-card,
+html.ios-device .model-preview,
+html.ios-device .filter-button,
+html.ios-device .search-box,
+html.ios-device .search-wrap,
+html.ios-device .topbar,
+html.ios-device header,
+html.ios-device dialog,
+html.ios-device .viewer-panel {
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+/* Her kartı ayrı paint/layout alanına hapsediyoruz. */
+html.ios-device .model-card {
+  contain: layout paint style !important;
+  content-visibility: auto;
+  contain-intrinsic-size: 680px;
+  background: #0b2034 !important;
+  border-color: rgba(121, 170, 205, 0.24) !important;
+  margin-bottom: 22px !important;
+  overflow: hidden !important;
+}
+
+/* Önizleme alanını telefonda gereksiz büyütme */
+html.ios-device .model-preview {
+  height: 285px !important;
+  min-height: 285px !important;
+  max-height: 285px !important;
+  overflow: hidden !important;
+  background: #0c2238 !important;
+  contain: strict !important;
+}
+
+html.ios-device .model-preview > img {
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 100% !important;
+  max-height: 100% !important;
+  object-fit: contain !important;
+  padding: 10px !important;
+  box-sizing: border-box !important;
+}
+
+/* iOS'ta kartları tek sütun ve sınırlı genişlikte tut */
+html.ios-device .model-grid {
+  display: block !important;
+}
+
+html.ios-device .model-card {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+/* Mobil sayfalama */
+html.ios-device .ios-pager {
+  display: flex !important;
+}
+
+.ios-pager {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin: 18px 0 32px;
+}
+
+.ios-pager button {
+  appearance: none;
+  border: 1px solid rgba(92, 220, 198, .38);
+  background: #0c2438;
+  color: #edf8ff;
+  border-radius: 14px;
+  padding: 11px 15px;
+  font: inherit;
+  font-weight: 800;
+}
+
+.ios-pager button:disabled {
+  opacity: .38;
+}
+
+.ios-pager span {
+  color: #9db1c4;
+  font-weight: 700;
+  min-width: 64px;
+  text-align: center;
+}
+
+@media (max-width: 640px) {
+  html.ios-device .model-preview {
+    height: 260px !important;
+    min-height: 260px !important;
+    max-height: 260px !important;
+  }
+
+  html.ios-device .model-content {
+    padding-top: 20px !important;
+  }
+}
