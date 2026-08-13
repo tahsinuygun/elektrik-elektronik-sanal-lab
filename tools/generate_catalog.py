@@ -88,7 +88,8 @@ def main() -> None:
 
             relative = glb_path.relative_to(ROOT).as_posix()
 
-            # iPhone AR için aynı klasörde aynı ada sahip USDZ dosyasını otomatik bul.
+            # USDZ isteğe bağlıdır. Varsa aynı klasörde aynı ada sahip dosyayı otomatik eşleştir.
+            # Yoksa iOS Quick Look için <model-viewer> GLB üzerinden çalışma anında USDZ üretir.
             usdz_path = next(
                 (
                     candidate
@@ -129,7 +130,7 @@ def main() -> None:
         json.dumps(catalog, ensure_ascii=False, indent=2) + "\n",
         encoding="utf-8"
     )
-    print(f"{len(models)} model otomatik olarak kataloğa eklendi. Aynı adlı USDZ dosyaları iPhone AR için eşleştirildi.")
+    print(f"{len(models)} model otomatik olarak kataloğa eklendi. USDZ dosyaları isteğe bağlı olarak eşleştirildi; yalnızca GLB bulunan modeller de iOS/Android AR için kullanılabilir.")
 
 
 if __name__ == "__main__":
